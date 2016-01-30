@@ -209,46 +209,7 @@ namespace AccentTutor {
                 spectrum = spectrum.Select(num => Math.Max((num - average) / stdDev, 0)).ToArray();
 
                 topPeaks = SpectrumAnalyzer.GetTopPeaks(spectrum, 16);
-
-                // Identify fundamental
-                float freqPerIndex = (float)AudioIn.SAMPLE_RATE / FftProcessor.SAMPLES_IN_FFT;
-
-                float bestFundamentalFreq = 0;
-                float bestScore = 0;
-                var orderedPeaks = topPeaks.OrderBy(peak => peak.lowIndex);
-                var potentialFundamentals = orderedPeaks.Zip(orderedPeaks.Skip(1), (a, b) => {
-                    int lowBound = b.lowIndex - a.highIndex; // low bound for index of frequency
-                    int highBound = b.highIndex - a.lowIndex; // range of frequency above the low bound
-                    return (lowBound + highBound) / 2f;
-                });
-
-                // Remove very low frequencies. We are talking about people here!
-                potentialFundamentals = potentialFundamentals.Where(a => a * freqPerIndex >= 50f);
-
-                foreach (var fund in potentialFundamentals) {
-                    // How many of the top peaks are a multiple of this?
-                    var matchingPeaks = orderedPeaks.Where(p => {
-                        int harmonicNum = (int)Math.Round(p.highIndex / fund);
-                        float offset = harmonicNum * fund;
-                        float tolerance = Math.Max(fund / 5f, p.highIndex / 100f);//2 * fund.Item2;
-                        return harmonicNum > 0 && p.lowIndex - offset <= tolerance && p.highIndex - offset >= -tolerance;
-                    });
-                    // Remove duplicate peaks with the same harmonic number (group them by harmonic number then take the first of each group)
-                    matchingPeaks = matchingPeaks.GroupBy(p => Math.Round(p.highIndex / fund)).Select(group => group.First());
-
-                    // It can't be a fundamental without at least 3 harmonics
-                    if (matchingPeaks.Count() > 3) {
-                        // Score is the number that matched divided by the maximum number that could have matched (harmonic number of last match)
-                        float score = matchingPeaks.Count() * (float)Math.Log(fund);
-                        float freq = matchingPeaks.Select(p => (p.highIndex + p.lowIndex) / (float)Math.Round((p.highIndex + p.lowIndex) / (fund * 2f))).Average() / 2f * freqPerIndex;
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestFundamentalFreq = freq;
-                            fundamentalsPeaks = matchingPeaks.ToArray();
-                        }
-                    }
-                }
-                fundamentalFrequency = bestFundamentalFreq;
+                fundamentalFrequency = SpectrumAnalyzer.IdentifyFundamental(topPeaks, out fundamentalsPeaks);
             } else {
                 fundamentalFrequency = -1;
                 topPeaks = null;
