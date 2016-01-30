@@ -5,7 +5,6 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using fftwlib;
-using NAudio.Wave;
 
 namespace AccentTutor
 {
@@ -28,15 +27,11 @@ namespace AccentTutor
 
     public delegate void FftDataAvailableHandler(object sender, FftDataAvailableHandlerArgs e);
 
-    public class AudioInFft : IDisposable
+    public class FftProcessor : IDisposable
     {
         private bool isDisposed = false;
-
-        public const int SAMPLE_RATE = 44100;
+        
         public const int SAMPLES_IN_FFT = 44100 / 2;
-        public const int BIT_DEPTH = 16;
-
-        WaveIn waveIn;
 
         IntPtr fftwDataIn;
         IntPtr fftwDataOut;
@@ -47,33 +42,9 @@ namespace AccentTutor
 
         public FftDataAvailableHandler FftDataAvilable;
 
-        public AudioInFft()
+        public FftProcessor()
         {
-            int i = WaveIn.DeviceCount;
-            if (WaveIn.DeviceCount <= 0)
-            {
-                // We need a device!
-                Debug.WriteLine("We have no microphone AHHH!");
-                return;
-            }
-            
             initFftw(SAMPLES_IN_FFT);
-        }
-
-        public void Stop() {
-            waveIn.StopRecording();
-        }
-
-        public void Start() {
-            waveIn = new WaveIn();
-            waveIn.DeviceNumber = 0;
-            // The number of milliseconds to get a buffer size of SAMPLES_IN_FFT
-            waveIn.BufferMilliseconds = 1000 / (SAMPLE_RATE / SAMPLES_IN_FFT);
-            waveIn.DataAvailable += waveIn_DataAvailable;
-            // 44.1khz 16-bit mono
-            waveIn.WaveFormat = new WaveFormat(SAMPLE_RATE, BIT_DEPTH, 1);
-            
-            waveIn.StartRecording();
         }
 
         void initFftw(int n)
@@ -107,9 +78,9 @@ namespace AccentTutor
             return (float)(0.5 * (1.0 - Math.Cos(2 * Math.PI * i / (N - 1))));
         }
 
-        void waveIn_DataAvailable(object sender, WaveInEventArgs e)
+        public void ProcessSamples(float[] samples)
         {
-            if (e.BytesRecorded != SAMPLES_IN_FFT * (BIT_DEPTH / 8))
+            if (samples.Length != SAMPLES_IN_FFT)
             {
                 Debug.WriteLine("Data available was not what was expected");
                 return;
@@ -118,7 +89,7 @@ namespace AccentTutor
             // Copy over data into our array... applying a hann window
             for (int i = 0; i < SAMPLES_IN_FFT; i++)
             {
-                dataIn[i] = e.Buffer[i] * hannWindow(i, SAMPLES_IN_FFT);
+                dataIn[i] = samples[i] * hannWindow(i, SAMPLES_IN_FFT);
             }
 
             // Copy the data over to the FFT's area
@@ -152,7 +123,7 @@ namespace AccentTutor
             }
         }
 
-        ~AudioInFft()
+        ~FftProcessor()
         {
             Dispose(false);
         }

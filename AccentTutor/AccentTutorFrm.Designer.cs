@@ -36,14 +36,14 @@
             this.spectrumDisplay.Dock = System.Windows.Forms.DockStyle.Fill;
             this.spectrumDisplay.Location = new System.Drawing.Point(0, 0);
             this.spectrumDisplay.Name = "spectrumDisplay";
-            this.spectrumDisplay.Size = new System.Drawing.Size(321, 294);
+            this.spectrumDisplay.Size = new System.Drawing.Size(480, 294);
             this.spectrumDisplay.TabIndex = 0;
             // 
             // AccentTutorFrm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(321, 294);
+            this.ClientSize = new System.Drawing.Size(480, 294);
             this.Controls.Add(this.spectrumDisplay);
             this.Name = "AccentTutorFrm";
             this.Text = "Accent Tutor";
