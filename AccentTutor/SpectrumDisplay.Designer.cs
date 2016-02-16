@@ -104,7 +104,7 @@
             // 
             // liveBtn
             // 
-            this.liveBtn.Location = new System.Drawing.Point(358, 3);
+            this.liveBtn.Location = new System.Drawing.Point(279, 29);
             this.liveBtn.Name = "liveBtn";
             this.liveBtn.Size = new System.Drawing.Size(72, 23);
             this.liveBtn.TabIndex = 6;
@@ -124,7 +124,7 @@
             this.Controls.Add(this.completionLbl);
             this.Controls.Add(this.recordBtn);
             this.Name = "SpectrumDisplay";
-            this.Size = new System.Drawing.Size(479, 240);
+            this.Size = new System.Drawing.Size(534, 240);
             this.Resize += new System.EventHandler(this.SpectrumDisplay_Resize);
             this.ResumeLayout(false);
 
