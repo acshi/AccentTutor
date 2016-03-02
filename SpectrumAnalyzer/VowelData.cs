@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 
-namespace AccentTutor {
+namespace SpectrumAnalyzer {
     public static class VowelData {
         public static string[] Vowels = {"i",
                                                  "I",
@@ -45,7 +42,7 @@ namespace AccentTutor {
             //["ɜ"] = new float[] { 474, 1379, 1710 },
             ["ə"] = new float[] { 490, 1350, 1690 },
             ["ʌ"] = new float[] { 640, 1190, 2390 },
-            ["u"] = new float[] { 300, 870, 2240 },
+            ["u"] = new float[] { 280, 870, 2240 },
             ["ʊ"] = new float[] { 440, 1020, 2240 },
             ["ɔ"] = new float[] { 570, 840, 2410 },
             //["ɒ"] = new float[] { 449, 737, 2635 },
@@ -62,13 +59,30 @@ namespace AccentTutor {
             //["ɜ"] = new float[] { 474, 1379, 1710 },
             ["ə"] = new float[] { 560, 1820, 2160 },
             ["ʌ"] = new float[] { 850, 1590, 3360 },
-            ["u"] = new float[] { 430, 1170, 3260 },
+            ["u"] = new float[] { 350, 1170, 3260 },
             ["ʊ"] = new float[] { 560, 1410, 3310 },
             ["ɔ"] = new float[] { 680, 1060, 3320 },
             //["ɒ"] = new float[] { 449, 737, 2635 },
             ["ɑ"] = new float[] { 1030, 1370, 3170 },
             //["l"] = new float[] { 300, 1225, 2950 },
             //["ɫ"] = new float[] { 450, 750, 2600 }
+        };
+
+        public static Dictionary<string, int[]> FormantStdDevs = new Dictionary<string, int[]> {
+            ["i"] = new int[] { 46, 166, 217 },
+            ["I"] = new int[] { 54, 111, 132 },
+            ["ɛ"] = new int[] { 48, 124, 139 },
+            ["æ"] = new int[] { 101, 103, 123 },
+            //["ɜ"] = new int[] { 0, 0, 0 },
+            ["ə"] = new int[] { 80, 140, 220 },
+            ["ʌ"] = new int[] { 60, 140, 200 },
+            ["u"] = new int[] { 80, 109, 144 },
+            ["ʊ"] = new int[] { 46, 76, 213 },
+            ["ɔ"] = new int[] { 66, 85, 183 },
+            //["ɒ"] = new int[] { 0, 0, 0 },
+            ["ɑ"] = new int[] { 105, 70, 176 },
+            //["l"] = new int[] { 0, 0, 0 },
+            //["ɫ"] = new int[] { 0, 0, 0 }
         };
 
         // In decibels

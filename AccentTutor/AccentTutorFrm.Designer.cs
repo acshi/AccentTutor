@@ -1,7 +1,5 @@
-﻿namespace AccentTutor
-{
-    partial class AccentTutorFrm
-    {
+﻿namespace AccentTutor {
+    partial class AccentTutorFrm {
         /// <summary>
         /// Required designer variable.
         /// </summary>
@@ -11,10 +9,8 @@
         /// Clean up any resources being used.
         /// </summary>
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
+        protected override void Dispose(bool disposing) {
+            if (disposing && (components != null)) {
                 components.Dispose();
             }
             base.Dispose(disposing);
@@ -26,34 +22,50 @@
         /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
-        private void InitializeComponent()
-        {
-            this.spectrumDisplay = new AccentTutor.SpectrumDisplay();
+        private void InitializeComponent() {
+            this.vowelListBox = new System.Windows.Forms.ListBox();
+            this.vowelDisplay = new AccentTutor.VowelDisplay();
             this.SuspendLayout();
             // 
-            // spectrumDisplay
+            // vowelListBox
             // 
-            this.spectrumDisplay.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.spectrumDisplay.Location = new System.Drawing.Point(0, 0);
-            this.spectrumDisplay.Name = "spectrumDisplay";
-            this.spectrumDisplay.Size = new System.Drawing.Size(560, 294);
-            this.spectrumDisplay.TabIndex = 0;
+            this.vowelListBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.vowelListBox.FormattingEnabled = true;
+            this.vowelListBox.ItemHeight = 20;
+            this.vowelListBox.Location = new System.Drawing.Point(367, 0);
+            this.vowelListBox.Name = "vowelListBox";
+            this.vowelListBox.Size = new System.Drawing.Size(95, 204);
+            this.vowelListBox.TabIndex = 1;
+            this.vowelListBox.SelectedIndexChanged += new System.EventHandler(this.vowelListBox_SelectedIndexChanged);
+            // 
+            // vowelDisplay
+            // 
+            this.vowelDisplay.BackColor = System.Drawing.Color.Black;
+            this.vowelDisplay.Location = new System.Drawing.Point(0, 0);
+            this.vowelDisplay.Name = "vowelDisplay";
+            this.vowelDisplay.Size = new System.Drawing.Size(368, 503);
+            this.vowelDisplay.TabIndex = 0;
+            this.vowelDisplay.TargetVowel = "i";
             // 
             // AccentTutorFrm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(560, 294);
-            this.Controls.Add(this.spectrumDisplay);
+            this.ClientSize = new System.Drawing.Size(462, 503);
+            this.Controls.Add(this.vowelListBox);
+            this.Controls.Add(this.vowelDisplay);
             this.Name = "AccentTutorFrm";
             this.Text = "Accent Tutor";
+            this.Load += new System.EventHandler(this.AccentTutorFrm_Load);
+            this.Resize += new System.EventHandler(this.AccentTutorFrm_Resize);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private AccentTutor.SpectrumDisplay spectrumDisplay;
+        private VowelDisplay vowelDisplay;
+        private System.Windows.Forms.ListBox vowelListBox;
     }
 }
 
