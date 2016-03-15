@@ -23,40 +23,41 @@
         /// the contents of this method with the code editor.
         /// </summary>
         private void InitializeComponent() {
-            this.recordBtn = new System.Windows.Forms.Button();
-            this.completionLbl = new System.Windows.Forms.Label();
+            this.measureBtn = new System.Windows.Forms.Button();
+            this.observationsLbl = new System.Windows.Forms.Label();
             this.analyzeFileBtn = new System.Windows.Forms.Button();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.saveVowelBtn = new System.Windows.Forms.Button();
             this.clearVowelBtn = new System.Windows.Forms.Button();
             this.processBtn = new System.Windows.Forms.Button();
             this.liveBtn = new System.Windows.Forms.Button();
+            this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.SuspendLayout();
             // 
-            // recordBtn
+            // measureBtn
             // 
-            this.recordBtn.Location = new System.Drawing.Point(3, 3);
-            this.recordBtn.Name = "recordBtn";
-            this.recordBtn.Size = new System.Drawing.Size(92, 23);
-            this.recordBtn.TabIndex = 0;
-            this.recordBtn.Text = "Record";
-            this.recordBtn.UseVisualStyleBackColor = true;
-            this.recordBtn.Click += new System.EventHandler(this.recordBtn_Click);
+            this.measureBtn.Location = new System.Drawing.Point(101, 3);
+            this.measureBtn.Name = "measureBtn";
+            this.measureBtn.Size = new System.Drawing.Size(94, 23);
+            this.measureBtn.TabIndex = 0;
+            this.measureBtn.Text = "Measure Vowel";
+            this.measureBtn.UseVisualStyleBackColor = true;
+            this.measureBtn.Click += new System.EventHandler(this.measureBtn_Click);
             // 
-            // completionLbl
+            // observationsLbl
             // 
-            this.completionLbl.Location = new System.Drawing.Point(3, 29);
-            this.completionLbl.Name = "completionLbl";
-            this.completionLbl.Size = new System.Drawing.Size(92, 25);
-            this.completionLbl.TabIndex = 1;
-            this.completionLbl.Text = "0% Complete";
-            this.completionLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.observationsLbl.Location = new System.Drawing.Point(279, 3);
+            this.observationsLbl.Name = "observationsLbl";
+            this.observationsLbl.Size = new System.Drawing.Size(98, 25);
+            this.observationsLbl.TabIndex = 1;
+            this.observationsLbl.Text = "0 Observations";
+            this.observationsLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // analyzeFileBtn
             // 
-            this.analyzeFileBtn.Location = new System.Drawing.Point(101, 3);
+            this.analyzeFileBtn.Location = new System.Drawing.Point(6, 3);
             this.analyzeFileBtn.Name = "analyzeFileBtn";
-            this.analyzeFileBtn.Size = new System.Drawing.Size(94, 23);
+            this.analyzeFileBtn.Size = new System.Drawing.Size(89, 23);
             this.analyzeFileBtn.TabIndex = 2;
             this.analyzeFileBtn.Text = "Analyze File";
             this.analyzeFileBtn.UseVisualStyleBackColor = true;
@@ -71,7 +72,7 @@
             // 
             this.saveVowelBtn.Location = new System.Drawing.Point(201, 3);
             this.saveVowelBtn.Name = "saveVowelBtn";
-            this.saveVowelBtn.Size = new System.Drawing.Size(151, 23);
+            this.saveVowelBtn.Size = new System.Drawing.Size(72, 23);
             this.saveVowelBtn.TabIndex = 3;
             this.saveVowelBtn.Text = "Save Vowel";
             this.saveVowelBtn.UseVisualStyleBackColor = true;
@@ -99,15 +100,20 @@
             // 
             // liveBtn
             // 
-            this.liveBtn.Location = new System.Drawing.Point(279, 29);
+            this.liveBtn.Location = new System.Drawing.Point(6, 30);
             this.liveBtn.Name = "liveBtn";
-            this.liveBtn.Size = new System.Drawing.Size(72, 23);
+            this.liveBtn.Size = new System.Drawing.Size(89, 23);
             this.liveBtn.TabIndex = 6;
             this.liveBtn.Text = "Live On/Off";
             this.liveBtn.UseVisualStyleBackColor = true;
             this.liveBtn.Click += new System.EventHandler(this.liveBtn_Click);
             // 
-            // SpectrumDisplay
+            // saveFileDialog
+            // 
+            this.saveFileDialog.DefaultExt = "csv";
+            this.saveFileDialog.Filter = "CSV files|*.csv";
+            // 
+            // SpectrumDisplayCtrl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -116,9 +122,9 @@
             this.Controls.Add(this.clearVowelBtn);
             this.Controls.Add(this.saveVowelBtn);
             this.Controls.Add(this.analyzeFileBtn);
-            this.Controls.Add(this.completionLbl);
-            this.Controls.Add(this.recordBtn);
-            this.Name = "SpectrumDisplay";
+            this.Controls.Add(this.observationsLbl);
+            this.Controls.Add(this.measureBtn);
+            this.Name = "SpectrumDisplayCtrl";
             this.Size = new System.Drawing.Size(534, 240);
             this.Resize += new System.EventHandler(this.SpectrumDisplay_Resize);
             this.ResumeLayout(false);
@@ -127,13 +133,14 @@
 
         #endregion
 
-        private System.Windows.Forms.Button recordBtn;
-        private System.Windows.Forms.Label completionLbl;
+        private System.Windows.Forms.Button measureBtn;
+        private System.Windows.Forms.Label observationsLbl;
         private System.Windows.Forms.Button analyzeFileBtn;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
         private System.Windows.Forms.Button saveVowelBtn;
         private System.Windows.Forms.Button clearVowelBtn;
         private System.Windows.Forms.Button processBtn;
         private System.Windows.Forms.Button liveBtn;
+        private System.Windows.Forms.SaveFileDialog saveFileDialog;
     }
 }

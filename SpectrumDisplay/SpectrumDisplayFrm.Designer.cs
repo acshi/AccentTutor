@@ -38,6 +38,7 @@
             this.spectrumDisplay.Name = "spectrumDisplay";
             this.spectrumDisplay.Size = new System.Drawing.Size(560, 294);
             this.spectrumDisplay.TabIndex = 0;
+            this.spectrumDisplay.Load += new System.EventHandler(this.spectrumDisplay_Load);
             // 
             // AccentTutorFrm
             // 

@@ -38,6 +38,9 @@ namespace AccentTutor
 
         public AudioIn(int samplesPerBatch)
         {
+            if ((1000f / ((float)SAMPLE_RATE / samplesPerBatch) % 1f != 0f)) {
+                throw new ArgumentException("Samples per batch must make up an integer number of milliseconds.");
+            }
             this.samplesPerBatch = samplesPerBatch;
 
             int i = WaveIn.DeviceCount;

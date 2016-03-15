@@ -10,5 +10,9 @@ namespace AccentTutor
         {
             InitializeComponent();
         }
+
+        private void spectrumDisplay_Load(object sender, EventArgs e) {
+            spectrumDisplay.InitializeAudioAndFft();
+        }
     }
 }

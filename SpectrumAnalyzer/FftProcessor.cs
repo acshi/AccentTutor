@@ -28,8 +28,8 @@ namespace SpectrumAnalyzer {
         private bool isDisposed = false;
 
         //public const int SAMPLES_IN_FFT = 44100 / 2;
-        public const int SAMPLES_IN_UPDATE = 44100 / 4;
-        public const int FFT_LENGTH = 44100;
+        public const int SAMPLES_IN_UPDATE = 44100 / 10;
+        public const int FFT_LENGTH = 44100 / 4;
 
         IntPtr fftwDataIn;
         IntPtr fftwDataOut;

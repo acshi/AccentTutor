@@ -8,13 +8,11 @@ using NAudio.Wave;
 using System.Threading;
 using SpectrumAnalyzer;
 using static SpectrumAnalyzer.Analyzer;
+using static SpectrumAnalyzer.VowelData;
+using System.Diagnostics;
 
 namespace AccentTutor {
     public partial class VowelDisplay : UserControl {
-        // Prevent race conditions with updating the UI
-        ManualResetEvent safeToDrawUI = new ManualResetEvent(true);
-        ManualResetEvent safeToChangeUIVariables = new ManualResetEvent(true);
-
         AudioIn audioIn;
         FftProcessor fftProcessor;
 
@@ -34,6 +32,20 @@ namespace AccentTutor {
             }
         }
 
+        private string targetLanguage = "english";
+        public string TargetLanguage
+        {
+            get
+            {
+                return targetLanguage;
+            }
+            set
+            {
+                targetLanguage = value;
+                updateUI();
+            }
+        }
+
         // This will give us entries from 0hz through max freq hz.
         float[] fft = new float[(int)(MAX_FREQ / ((float)AudioIn.SAMPLE_RATE / FftProcessor.FFT_LENGTH))];
         Peak[] topPeaks;
@@ -41,19 +53,13 @@ namespace AccentTutor {
         float[] harmonicValues;
 
         Formant[][] lastObservedFormants = new Formant[4][];
-        Formant[][] lastAcceptedFormants = new Formant[3][]; // one array of last accepted values for each of f1, f2, and f3.
         Formant[] formants;
         VowelMatching vowelMatching;
 
-        float[] lastObservedFundamentals = new float[4];
-        float[] lastChosenFundamentals = new float[4];
+        float[] lastObservedFundamentals = new float[8];
         float fundamentalFrequency = -1;
 
         public VowelDisplay() {
-            for (int i = 0; i < lastAcceptedFormants.Length; i++) {
-                lastAcceptedFormants[i] = new Formant[4];
-            }
-
             InitializeComponent();
 
             SetStyle(
@@ -89,8 +95,8 @@ namespace AccentTutor {
         }
 
         private void prepareVisualization() {
-            safeToDrawUI.Reset();
-            safeToChangeUIVariables.WaitOne(); // Block while painting UI
+            // Safe updating with ui
+            Monitor.Enter(this);
 
             if (fft != null) {
                 // Transform the specturm to reflect how the vocal chords produce both low and high frequencies quieter than middle frequencies
@@ -101,65 +107,72 @@ namespace AccentTutor {
                 //spectrum = spectrum.Index().Select(v => v.Value * (float)Math.Exp((v.Key * deltaFreq - 1000) / 1300)).ToArray();
 
                 topPeaks = GetTopPeaks(fft, 32);
-                float newFundamental = IdentifyFundamental(topPeaks, out fundamentalsPeaks);
-                fundamentalFrequency = MakeSmoothedFundamental(newFundamental, lastObservedFundamentals, lastChosenFundamentals);
+                float newFundamental = IdentifyFundamental(fft);//IdentifyFundamental(topPeaks, out fundamentalsPeaks);
+                fundamentalFrequency = MakeSmoothedFundamental(newFundamental, lastObservedFundamentals);//, lastChosenFundamentals);
 
                 if (fundamentalFrequency != -1) {
                     harmonicValues = EvaluateHarmonicSeries(fft, fundamentalFrequency);
                     var newFormants = IdentifyApparentFormants(fundamentalFrequency, harmonicValues, 0.8f);
-                    var newFormants123 = IdentifyFormants123(newFormants);
-                    formants = MakeSmoothedFormants123(newFormants123, lastObservedFormants, lastAcceptedFormants);
-                    vowelMatching = MatchVowel(formants, fundamentalFrequency, targetVowel);
+                    var newFormants123 = IdentifyFormants123(newFormants, GetVowels(targetLanguage));
+                    formants = MakeSmoothedFormants123(newFormants123, lastObservedFormants);//, lastAcceptedFormants);
+                    vowelMatching = MatchVowel(formants, fundamentalFrequency, GetVowel(targetLanguage, targetVowel));
                 }
             } else {
                 fundamentalFrequency = -1;
                 topPeaks = null;
             }
 
-            safeToDrawUI.Set();
+            Monitor.Exit(this);
             updateUI();
         }
 
         private void HandleFftData(object sender, FftDataAvailableHandlerArgs e) {
             float[] rawFft = e.FftData;
 
+            float[] newFft = new float[fft.Length];
+
             // Normalize and then square for power instead of amplitude
-            for (int i = 0; i < fft.Length; i++) {
+            for (int i = 0; i < newFft.Length; i++) {
                 float n = rawFft[i] / (float)Math.Sqrt(FftProcessor.FFT_LENGTH);
-                fft[i] = n * n;
+                newFft[i] = n * n;
             }
             // Remove DC component (and close to it)
-            fft[0] = fft[1] = fft[2] = 0;
+            newFft[0] = newFft[1] = newFft[2] = 0;
 
             // Remove noise in the fft with a high-pass filter
-            float lastIn = fft[0];
+            float lastIn = newFft[0];
             float lastOut = lastIn;
             float alpha = 0.96f;
-            for (int i = 1; i < fft.Length; i++) {
-                float inValue = fft[i];
+            for (int i = 1; i < newFft.Length; i++) {
+                float inValue = newFft[i];
                 float outValue = alpha * (lastOut + inValue - lastIn);
                 lastIn = inValue;
                 lastOut = outValue;
-                fft[i] = outValue;
+                newFft[i] = outValue;
             }
 
             // Z-score it, put negative values at 0.
-            float average = fft.Average();
+            float average = newFft.Average();
             float sumSquareDiffs = 0;
-            for (int i = 0; i < fft.Length; i++) {
-                sumSquareDiffs += (fft[i] - average) * (fft[i] - average);
+            for (int i = 0; i < newFft.Length; i++) {
+                sumSquareDiffs += (newFft[i] - average) * (newFft[i] - average);
             }
-            float stdDev = (float)Math.Sqrt(sumSquareDiffs / fft.Length);
-            for (int i = 0; i < fft.Length; i++) {
-                fft[i] = (fft[i] - average) / stdDev; //Math.Max(..., 0)?
+            float stdDev = (float)Math.Sqrt(sumSquareDiffs / newFft.Length);
+            for (int i = 0; i < newFft.Length; i++) {
+                newFft[i] = (newFft[i] - average) / stdDev;
             }
 
-            prepareVisualization();
+            // Consider it noise/silence if the stdDev is too low
+            Debug.WriteLine(stdDev);
+            if (stdDev > 1e6) {
+                fft = newFft;
+                prepareVisualization();
+            }
         }
 
         protected override void OnPaint(PaintEventArgs pe) {
-            safeToChangeUIVariables.Reset();
-            safeToDrawUI.WaitOne(); // Block while GUI referenced things are referenced
+            // Safe with updating ui
+            Monitor.Enter(this);
 
             Graphics graphics = pe.Graphics;
 
@@ -201,33 +214,38 @@ namespace AccentTutor {
 
                 // Draw current pronunciation point at (f1, f2)
                 if (vowelMatching.matches != null && vowelMatching.matches.Length >= 2) {
+                    float f0 = fundamentalFrequency;
                     float f1 = formants[vowelMatching.matches[0].Item1].freq;
                     float f2 = formants[vowelMatching.matches[1].Item1].freq;
+                    float f3 = formants[vowelMatching.matches[2].Item1].freq;
 
                     float px = f1 * Width / 1400;
                     float py = Height - (f2 - 500) * Height / 3500;
                     graphics.FillEllipse(Brushes.Yellow, px - 5, py - 5, 10, 10);
 
-                    graphics.DrawString("F1: " + f1, font, Brushes.White, 10, 10);
-                    graphics.DrawString("F2: " + f2, font, Brushes.White, 10, 30);
+                    graphics.DrawString("F0: " + f0, font, Brushes.White, 10, 10);
+                    graphics.DrawString("F1: " + f1, font, Brushes.White, 10, 30);
+                    graphics.DrawString("F2: " + f2, font, Brushes.White, 10, 50);
+                    graphics.DrawString("F3: " + f3, font, Brushes.White, 10, 70);
                 }
             }
 
-            for (int i = 0; i < VowelData.Vowels.Length; i++) {
+            Vowel[] vowels = GetVowels(targetLanguage);
+            for (int i = 0; i < vowels.Length; i++) {
                 // Draw the regions of our formant
-                string vowel = VowelData.Vowels[i];
+                Vowel v = vowels[i];
 
-                float lowF1 = VowelData.FormantLows[vowel][0] * f1Scale;
-                float highF1 = VowelData.FormantHighs[vowel][0] * f1Scale;
-                float lowF2 = (VowelData.FormantLows[vowel][1] - 500) * f2Scale;
-                float highF2 = (VowelData.FormantHighs[vowel][1] - 500) * f2Scale;
-                float stdDevF1 = VowelData.FormantStdDevs[vowel][0] * f1Scale;
-                float stdDevF2 = VowelData.FormantStdDevs[vowel][1] * f2Scale;
+                float lowF1 = v.formantLows[0] * f1Scale;
+                float highF1 = v.formantHighs[0] * f1Scale;
+                float lowF2 = (v.formantLows[1] - 500) * f2Scale;
+                float highF2 = (v.formantHighs[1] - 500) * f2Scale;
+                float stdDevF1 = v.formantStdDevs[0] * f1Scale;
+                float stdDevF2 = v.formantStdDevs[1] * f2Scale;
 
-                Brush b = (vowel == targetVowel) ? Brushes.White : Brushes.Gray;
-                Pen p = (vowel == targetVowel) ? Pens.White : Pens.Gray;
+                Brush b = (v.vowel == targetVowel) ? Brushes.White : Brushes.Gray;
+                Pen p = (v.vowel == targetVowel) ? Pens.White : Pens.Gray;
 
-                graphics.DrawString(vowel, font, b, (lowF1 + highF1) / 2f - 7, Height - (lowF2 + highF2) / 2f - 7);
+                graphics.DrawString(v.vowel, font, b, (lowF1 + highF1) / 2f - 7, Height - (lowF2 + highF2) / 2f - 7);
                 graphics.DrawPolygon(p, new PointF[] {
                     new PointF(lowF1 - stdDevF1, Height - (lowF2 + stdDevF2)),
                     new PointF(lowF1 - stdDevF1, Height - (lowF2 - stdDevF2)),
@@ -238,7 +256,7 @@ namespace AccentTutor {
                 });
             }
 
-            safeToChangeUIVariables.Set();
+            Monitor.Exit(this);
         }
 
         private void SpectrumDisplay_Resize(object sender, EventArgs e) {
