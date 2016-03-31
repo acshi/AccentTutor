@@ -35,7 +35,17 @@ namespace SpectrumAnalyzer {
         };
 
         public static Vowel[] MandarinVowels = {
-            new Vowel("a", "as in a/阿", new float[] { 896, 2516, 3066 }, new float[] { 988, 2677, 3381 }, new int[] { 32, 50, 136 }, new int[] { -2, -16, -19 }),
+new Vowel("a", "as in a/阿", new float[] { 937, 1448, 3206 }, new float[] { 1036, 1571, 3338 }, new int[] { 99, 123, 132 }, new int[] { -1, -10, -23 }),
+new Vowel("e", "as in e/饿", new float[] { 444, 1073, 3500 }, new float[] { 482, 1246, 3700 }, new int[] { 38, 173, 200 }, new int[] { 0, -14, -22 }),
+new Vowel("ê", "as in mei/美", new float[] { 609, 1792, 2620 }, new float[] { 653, 1946, 2878 }, new int[] { 45, 154, 258 }, new int[] { -1, -8, -17 }),
+new Vowel("o", "as in wo/我", new float[] { 546, 801, 3153 }, new float[] { 670, 882, 3259 }, new int[] { 124, 81, 106 }, new int[] { -1, -7, -25 }),
+new Vowel("u", "as in wu/五", new float[] { 308, 1016, 3510 }, new float[] { 379, 1297, 3640 }, new int[] { 71, 281, 130 }, new int[] { -1, -37, -39 }),
+new Vowel("i", "as in yi/已", new float[] { 358, 2307, 3270 }, new float[] { 386, 2369, 3512 }, new int[] { 30, 62, 242 }, new int[] { -1, -17, -10 }),
+new Vowel("ü", "as in yu/雨", new float[] { 319, 2059, 3037 }, new float[] { 372, 2144, 3286 }, new int[] { 54, 85, 249 }, new int[] { -1, -12, -12 }),
+new Vowel("r", "as in ri/日", new float[] { 333, 1617, 2723 }, new float[] { 360, 1741, 2920 }, new int[] { 30, 124, 198 }, new int[] { -1, -7, -15 }),
+new Vowel("ɨ", "as in zi/子", new float[] { 346, 1489, 2487 }, new float[] { 326, 1510, 2598 }, new int[] { 30, 30, 111 }, new int[] { -1, -15, -23 }),
+
+            /*new Vowel("a", "as in a/阿", new float[] { 896, 2516, 3066 }, new float[] { 988, 2677, 3381 }, new int[] { 32, 50, 136 }, new int[] { -2, -16, -19 }),
             new Vowel("e", "as in e/饿", new float[] { 544, 1611, 3049 }, new float[] { 594, 1703, 3191 }, new int[] { 19, 38, 46 }, new int[] { 0, -17, -22 }),
             new Vowel("ê", "as in mei/美", new float[] { 515, 2571, 3196 }, new float[] { 515, 2571, 3197 }, new int[] { 0, 0, 1 }, new int[] { -1, -9, -9 }),
             new Vowel("r", "as in er/儿", new float[] { 481, 1669, 2193 }, new float[] { 522, 1832, 2248 }, new int[] { 15, 56, 20 }, new int[] { -1, -9, -12 }),
@@ -43,7 +53,7 @@ namespace SpectrumAnalyzer {
             new Vowel("ri", "as in ri/日", new float[] { 332, 2215, 2920 }, new float[] { 382, 2320, 3098 }, new int[] { 20, 35, 61 }, new int[] { -1, -15, -17 }),
             new Vowel("u", "as in wu/五", new float[] { 419, 2758, 3238 }, new float[] { 454, 2938, 3497 }, new int[] { 12, 74, 94 }, new int[] { 0, -46, -45 }),
             new Vowel("i", "as in yi/已", new float[] { 237, 2876, 3544 }, new float[] { 255, 2936, 3569 }, new int[] { 9, 23, 11 }, new int[] { -2, -17, -13 }),
-            new Vowel("ü", "as in yu/雨", new float[] { 255, 2556, 3368 }, new float[] { 287, 2674, 3670 }, new int[] { 12, 43, 113 }, new int[] { -2, -11, -15 }),
+            new Vowel("ü", "as in yu/雨", new float[] { 255, 2556, 3368 }, new float[] { 287, 2674, 3670 }, new int[] { 12, 43, 113 }, new int[] { -2, -11, -15 }),*/
         };
 
         public static Vowel GetVowel(string language, string vowel) {

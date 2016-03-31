@@ -16,9 +16,6 @@ namespace AccentTutor {
         AudioIn audioIn;
         FftProcessor fftProcessor;
 
-        const float RECORDING_TOLERANCE = 0.002f;
-        const int SPECTRUMS_PER_TAKE = 10;
-
         private string targetVowel = "i";
         public string TargetVowel
         {
@@ -48,15 +45,12 @@ namespace AccentTutor {
 
         // This will give us entries from 0hz through max freq hz.
         float[] fft = new float[(int)(MAX_FREQ / ((float)AudioIn.SAMPLE_RATE / FftProcessor.FFT_LENGTH))];
-        Peak[] topPeaks;
-        Peak[] fundamentalsPeaks;
-        float[] harmonicValues;
 
-        Formant[][] lastObservedFormants = new Formant[4][];
+        float[][] lastFfts = new float[8][];
+        
         Formant[] formants;
-        VowelMatching vowelMatching;
-
-        float[] lastObservedFundamentals = new float[8];
+        //VowelMatching vowelMatching;
+       
         float fundamentalFrequency = -1;
 
         public VowelDisplay() {
@@ -106,7 +100,7 @@ namespace AccentTutor {
                 // Then boost high frequencies > 1000hz about
                 //spectrum = spectrum.Index().Select(v => v.Value * (float)Math.Exp((v.Key * deltaFreq - 1000) / 1300)).ToArray();
 
-                topPeaks = GetTopPeaks(fft, 32);
+                /*topPeaks = GetTopPeaks(fft, 32);
                 float newFundamental = IdentifyFundamental(fft);//IdentifyFundamental(topPeaks, out fundamentalsPeaks);
                 fundamentalFrequency = MakeSmoothedFundamental(newFundamental, lastObservedFundamentals);//, lastChosenFundamentals);
 
@@ -116,10 +110,17 @@ namespace AccentTutor {
                     var newFormants123 = IdentifyFormants123(newFormants, GetVowels(targetLanguage));
                     formants = MakeSmoothedFormants123(newFormants123, lastObservedFormants);//, lastAcceptedFormants);
                     vowelMatching = MatchVowel(formants, fundamentalFrequency, GetVowel(targetLanguage, targetVowel));
-                }
+                }*/
+
+                // Shift in the new fft
+                Array.Copy(lastFfts, 1, lastFfts, 0, lastFfts.Length - 1);
+                lastFfts[lastFfts.Length - 1] = fft;
+
+                float[] harmonicSeries; // We don't need this here.
+                PerformFormantAnalysis(lastFfts, out fundamentalFrequency, out harmonicSeries, out formants);
+                //vowelMatching = MatchVowel(formants, fundamentalFrequency, GetVowel(targetLanguage, targetVowel));
             } else {
                 fundamentalFrequency = -1;
-                topPeaks = null;
             }
 
             Monitor.Exit(this);
@@ -163,11 +164,73 @@ namespace AccentTutor {
             }
 
             // Consider it noise/silence if the stdDev is too low
-            Debug.WriteLine(stdDev);
-            if (stdDev > 1e6) {
+            //Debug.WriteLine(stdDev);
+            if (stdDev > 1e7) {
                 fft = newFft;
                 prepareVisualization();
             }
+        }
+
+        void DrawVowelRegion(Graphics graphics, Font font, Vowel v) {
+            float f1Scale = Width / 1400f;
+            float f2Scale = Height / 3500f;
+
+            float lowF1 = v.formantLows[0] * f1Scale;
+            float highF1 = v.formantHighs[0] * f1Scale;
+            float lowF2 = (v.formantLows[1] - 500) * f2Scale;
+            float highF2 = (v.formantHighs[1] - 500) * f2Scale;
+            float stdDevF1 = v.formantStdDevs[0] * f1Scale;
+            float stdDevF2 = v.formantStdDevs[1] * f2Scale;
+
+            Brush b = (v.vowel == targetVowel) ? Brushes.Black : Brushes.Gray;
+            Pen p = (v.vowel == targetVowel) ? Pens.White : Pens.Gray;
+
+            var vowelBoundaryPoints = new PointF[] {
+                    new PointF(lowF1 - stdDevF1, Height - (lowF2 + stdDevF2)),
+                    new PointF(lowF1 - stdDevF1, Height - (lowF2 - stdDevF2)),
+                    new PointF(lowF1 + stdDevF1, Height - (lowF2 - stdDevF2)),
+                    new PointF(highF1 + stdDevF1, Height - (highF2 - stdDevF2)),
+                    new PointF(highF1 + stdDevF1, Height - (highF2 + stdDevF2)),
+                    new PointF(highF1 - stdDevF1, Height - (highF2 + stdDevF2)),
+                };
+            // Amplitude values here are in decibels (all negative). Roundedness will range -0db to -50db, here 0 to 1.
+            double roundedness = Roundedness(v.formantAmplitudes[0], v.formantAmplitudes[1], v.formantAmplitudes[2]);
+            graphics.FillPolygon(new SolidBrush(HsvToColor(roundedness * 180, 0.6, 1.0)), vowelBoundaryPoints);
+            graphics.DrawPolygon(p, vowelBoundaryPoints);
+
+            graphics.DrawString(v.vowel, font, b, (lowF1 + highF1) / 2f - 7, Height - (lowF2 + highF2) / 2f - 7);
+        }
+
+        // Roundedness of the vowel by the decibels of the formants, 0 to 1
+        float Roundedness(int db1, int db2, int db3) {
+            if (db2 > db1) {
+                int tmp = db1;
+                db1 = db2;
+                db2 = tmp;
+            }
+            if (db3 > db1) {
+                int tmp = db1;
+                db1 = db3;
+                db3 = tmp;
+            }
+            // Amplitude values here are in decibels (all negative). Roundedness will range -0db to -50db, here 0 to 1.
+            return Math.Min(Math.Min(0, (Math.Max(db2, db3) - db1)) / -50.0f, 1.0f);
+        }
+
+        // Roundedness of the vowel by the amplitudes of the formants, 0 to 1
+        float Roundedness(float f1val, float f2val, float f3val) {
+            if (f2val > f1val) {
+                float tmp = f1val;
+                f1val = f2val;
+                f2val = tmp;
+            }
+            if (f3val > f1val) {
+                float tmp = f1val;
+                f1val = f3val;
+                f3val = tmp;
+            }
+            // values are not decibels, so convert first
+            return Math.Min(Math.Min(0, (float)Math.Log10(Math.Max(f2val, f3val) / f1val) * 20) / -50.0f, 1.0f);
         }
 
         protected override void OnPaint(PaintEventArgs pe) {
@@ -198,62 +261,37 @@ namespace AccentTutor {
 
             float f1Scale = Width / 1400f;
             float f2Scale = Height / 3500f;
-
-            if (fundamentalFrequency != -1) {
-                // Draw grid harmonic lines
-                /*for (float f = 0; f < 1400; f += fundamentalFrequency) {
-                    float x = f * f1Scale;
-                    graphics.DrawLine(Pens.Gray, x, 0, x, Height);
-                }
-                for (float f = 0; f < 4000; f += fundamentalFrequency) {
-                    if (f > 500) {
-                        float y = (f - 500) * f2Scale;
-                        graphics.DrawLine(Pens.Gray, 0, y, Width, y);
-                    }
-                }*/
-
-                // Draw current pronunciation point at (f1, f2)
-                if (vowelMatching.matches != null && vowelMatching.matches.Length >= 2) {
-                    float f0 = fundamentalFrequency;
-                    float f1 = formants[vowelMatching.matches[0].Item1].freq;
-                    float f2 = formants[vowelMatching.matches[1].Item1].freq;
-                    float f3 = formants[vowelMatching.matches[2].Item1].freq;
-
-                    float px = f1 * Width / 1400;
-                    float py = Height - (f2 - 500) * Height / 3500;
-                    graphics.FillEllipse(Brushes.Yellow, px - 5, py - 5, 10, 10);
-
-                    graphics.DrawString("F0: " + f0, font, Brushes.White, 10, 10);
-                    graphics.DrawString("F1: " + f1, font, Brushes.White, 10, 30);
-                    graphics.DrawString("F2: " + f2, font, Brushes.White, 10, 50);
-                    graphics.DrawString("F3: " + f3, font, Brushes.White, 10, 70);
-                }
-            }
-
+            
             Vowel[] vowels = GetVowels(targetLanguage);
             for (int i = 0; i < vowels.Length; i++) {
-                // Draw the regions of our formant
+                // Draw the regions of the formant
                 Vowel v = vowels[i];
+                DrawVowelRegion(graphics, font, v);
+            }
+            // Draw current vowel on top again
+            DrawVowelRegion(graphics, font, GetVowel(targetLanguage, targetVowel));
 
-                float lowF1 = v.formantLows[0] * f1Scale;
-                float highF1 = v.formantHighs[0] * f1Scale;
-                float lowF2 = (v.formantLows[1] - 500) * f2Scale;
-                float highF2 = (v.formantHighs[1] - 500) * f2Scale;
-                float stdDevF1 = v.formantStdDevs[0] * f1Scale;
-                float stdDevF2 = v.formantStdDevs[1] * f2Scale;
+            if (fundamentalFrequency != -1) {
 
-                Brush b = (v.vowel == targetVowel) ? Brushes.White : Brushes.Gray;
-                Pen p = (v.vowel == targetVowel) ? Pens.White : Pens.Gray;
+                // Draw current pronunciation point at (f1, f2)
+                //if (vowelMatching.matches != null && vowelMatching.matches.Length >= 2) {
+                float f0 = fundamentalFrequency;
+                var f1 = formants[0];//[vowelMatching.matches[0].Item1];
+                var f2 = formants[1];//[vowelMatching.matches[1].Item1];
+                var f3 = formants[2];//[vowelMatching.matches[2].Item1];
 
-                graphics.DrawString(v.vowel, font, b, (lowF1 + highF1) / 2f - 7, Height - (lowF2 + highF2) / 2f - 7);
-                graphics.DrawPolygon(p, new PointF[] {
-                    new PointF(lowF1 - stdDevF1, Height - (lowF2 + stdDevF2)),
-                    new PointF(lowF1 - stdDevF1, Height - (lowF2 - stdDevF2)),
-                    new PointF(lowF1 + stdDevF1, Height - (lowF2 - stdDevF2)),
-                    new PointF(highF1 + stdDevF1, Height - (highF2 - stdDevF2)),
-                    new PointF(highF1 + stdDevF1, Height - (highF2 + stdDevF2)),
-                    new PointF(highF1 - stdDevF1, Height - (highF2 + stdDevF2)),
-                });
+                float px = f1.freq * Width / 1400;
+                float py = Height - (f2.freq - 500) * Height / 3500;
+                // values are not decibels, so convert first
+                float roundedness = Roundedness(f1.value, f2.value, f3.value);
+                graphics.FillEllipse(new SolidBrush(HsvToColor(roundedness * 180, 0.6, 1.0)), px - 5, py - 5, 10, 10);
+                graphics.DrawEllipse(Pens.Black, px - 5, py - 5, 10, 10);
+
+                graphics.DrawString("F0: " + f0, font, Brushes.White, 10, 10);
+                graphics.DrawString("F1: " + f1.freq, font, Brushes.White, 10, 30);
+                graphics.DrawString("F2: " + f2.freq, font, Brushes.White, 10, 50);
+                graphics.DrawString("F3: " + f3.freq, font, Brushes.White, 10, 70);
+                //}
             }
 
             Monitor.Exit(this);
@@ -261,6 +299,113 @@ namespace AccentTutor {
 
         private void SpectrumDisplay_Resize(object sender, EventArgs e) {
             Invalidate();
+        }
+
+        /// <summary>
+        /// Convert HSV to RGB
+        /// h is from 0-360 mod 360
+        /// s,v values are 0-1
+        /// r,g,b values are 0-255
+        /// Based upon http://ilab.usc.edu/wiki/index.php/HSV_And_H2SV_Color_Space#HSV_Transformation_C_.2F_C.2B.2B_Code_2
+        /// From: http://www.splinter.com.au/converting-hsv-to-rgb-colour-using-c/
+        /// </summary>
+        Color HsvToColor(double h, double S, double V) {
+            // ######################################################################
+            // T. Nathan Mundhenk
+            // mundhenk@usc.edu
+            // C/C++ Macro HSV to RGB
+
+            double H = h;
+            while (H < 0) { H += 360; };
+            while (H >= 360) { H -= 360; };
+            double R, G, B;
+            if (V <= 0) { R = G = B = 0; } else if (S <= 0) {
+                R = G = B = V;
+            } else {
+                double hf = H / 60.0;
+                int i = (int)Math.Floor(hf);
+                double f = hf - i;
+                double pv = V * (1 - S);
+                double qv = V * (1 - S * f);
+                double tv = V * (1 - S * (1 - f));
+                switch (i) {
+
+                    // Red is the dominant color
+
+                    case 0:
+                        R = V;
+                        G = tv;
+                        B = pv;
+                        break;
+
+                    // Green is the dominant color
+
+                    case 1:
+                        R = qv;
+                        G = V;
+                        B = pv;
+                        break;
+                    case 2:
+                        R = pv;
+                        G = V;
+                        B = tv;
+                        break;
+
+                    // Blue is the dominant color
+
+                    case 3:
+                        R = pv;
+                        G = qv;
+                        B = V;
+                        break;
+                    case 4:
+                        R = tv;
+                        G = pv;
+                        B = V;
+                        break;
+
+                    // Red is the dominant color
+
+                    case 5:
+                        R = V;
+                        G = pv;
+                        B = qv;
+                        break;
+
+                    // Just in case we overshoot on our math by a little, we put these here. Since its a switch it won't slow us down at all to put these here.
+
+                    case 6:
+                        R = V;
+                        G = tv;
+                        B = pv;
+                        break;
+                    case -1:
+                        R = V;
+                        G = pv;
+                        B = qv;
+                        break;
+
+                    // The color is not defined, we should throw an error.
+
+                    default:
+                        //LFATAL("i Value error in Pixel conversion, Value is %d", i);
+                        R = G = B = V; // Just pretend its black/white
+                        break;
+                }
+            }
+            int r = Clamp((int)(R * 255.0));
+            int g = Clamp((int)(G * 255.0));
+            int b = Clamp((int)(B * 255.0));
+            return Color.FromArgb(r, g, b);
+        }
+
+        /// <summary>
+        /// Clamp a value to 0-255
+        /// </summary>
+        int Clamp(int i) {
+            if (i < 0) return 0;
+            if (i > 255) return 255;
+            return i;
         }
     }
 }

@@ -40,12 +40,12 @@ namespace SpectrumDisplay {
         float[] fftData;
         float[] fft;
         float[] spectrum;
-        Peak[] topPeaks;
-        Peak[] fundamentalsPeaks;
-        float[] harmonicValues;
+        float[] harmonicValues = null;
 
-        Formant[][] lastObservedFormants = new Formant[4][];
-        Formant[][] lastAcceptedFormants = new Formant[3][]; // one array of last accepted values for each of f1, f2, and f3.
+        float[][] lastSpectrums = new float[8][];
+
+        //Formant[][] lastObservedFormants = new Formant[4][];
+        //Formant[][] lastAcceptedFormants = new Formant[3][]; // one array of last accepted values for each of f1, f2, and f3.
         //List<Formant> apparentFormants = new List<Formant>();
         Formant[] formants = new Formant[3];
 
@@ -58,9 +58,9 @@ namespace SpectrumDisplay {
         float fundamentalFrequency = -1;
 
         public SpectrumDisplayCtrl() {
-            for (int i = 0; i < lastAcceptedFormants.Length; i++) {
-                lastAcceptedFormants[i] = new Formant[4];
-            }
+            //for (int i = 0; i < lastAcceptedFormants.Length; i++) {
+            //    lastAcceptedFormants[i] = new Formant[4];
+            //}
 
             InitializeComponent();
             updateUI();
@@ -176,6 +176,7 @@ namespace SpectrumDisplay {
                         readers.Add(fileReader);
                     } else {
                         MessageBox.Show("Could not open the file " + openFileDialog.FileName + " as WAV file. Use only 44.1khz 16-bit PCM WAV.");
+                        fileReader.Close();
                     }
                 }
                 if (readers.Count > 0) {
@@ -231,8 +232,8 @@ namespace SpectrumDisplay {
                 spectrum = spectrum.Select(num => Math.Max((num - average) / stdDev, 0)).ToArray();
 
                 // Consider it noise/silence if the stdDev is too low
-                if (stdDev > 1e5) {
-                    topPeaks = GetTopPeaks(spectrum, 32);
+                if (stdDev > 1e7) {
+                    /*topPeaks = GetTopPeaks(spectrum, 32);
                     float newFundamental = IdentifyFundamental(spectrum);//IdentifyFundamental(topPeaks, out fundamentalsPeaks);
                     fundamentalFrequency = MakeSmoothedFundamental(newFundamental, lastObservedFundamentals);//, lastChosenFundamentals);
 
@@ -246,11 +247,21 @@ namespace SpectrumDisplay {
                         if (isMeasuring) {
                             vowelObservations.Add(formants);
                         }
+                    }*/
+
+                    // Shift in the new fft
+                    Array.Copy(lastSpectrums, 1, lastSpectrums, 0, lastSpectrums.Length - 1);
+                    lastSpectrums[lastSpectrums.Length - 1] = spectrum;
+
+                    PerformFormantAnalysis(lastSpectrums, out fundamentalFrequency, out harmonicValues, out formants);
+                    vowelMatchings = IdentifyVowel(formants, fundamentalFrequency);
+
+                    if (isMeasuring) {
+                        vowelObservations.Add(formants);
                     }
                 }
             } else {
                 fundamentalFrequency = -1;
-                topPeaks = null;
             }
 
             //safeToDrawUI.Set();
@@ -299,27 +310,27 @@ namespace SpectrumDisplay {
                 for (int x = 0; x < spectrum.Length; x++) {
                     float y = spectrum[x] * 30;
                     // Draw the peak centers in different colors
-                    if (fundamentalsPeaks != null && fundamentalsPeaks.Any(peak => peak.lowIndex <= x && x <= peak.highIndex)) {
-                        graphics.DrawLine(Pens.Magenta, x, height, x, height - y);
-                    } else if (topPeaks != null && topPeaks.Any(peak => peak.lowIndex <= x && x <= peak.highIndex)) {
-                        graphics.DrawLine(Pens.Red, x, height, x, height - y);
-                    } else {
-                        graphics.DrawLine(Pens.Black, x, height, x, height - y);
-                    }
+                    //if (fundamentalsPeaks != null && fundamentalsPeaks.Any(peak => peak.lowIndex <= x && x <= peak.highIndex)) {
+                    //    graphics.DrawLine(Pens.Magenta, x, height, x, height - y);
+                    //} else if (topPeaks != null && topPeaks.Any(peak => peak.lowIndex <= x && x <= peak.highIndex)) {
+                    //    graphics.DrawLine(Pens.Red, x, height, x, height - y);
+                    //} else {
+                    graphics.DrawLine(Pens.Black, x, height, x, height - y);
+                    //}
                 }
             }
 
             // Label the top peaks with their frequency and rank
-            if (topPeaks != null) {
-                int n = 0;
-                foreach (var peak in topPeaks) {
-                    float x = peak.maxIndex - 5.0f;//(peak.lowIndex + peak.highIndex) / 2f - 5.0f;
-                    float y = Math.Max(height - 14 - peak.maxValue * 30, 100);
-                    graphics.DrawString("" + ++n, font, Brushes.Black, x, y - 2);
-                    float freq = peak.maxIndex * freqPerIndex;//(peak.lowIndex + peak.highIndex) / 2f * freqPerIndex;
-                    graphics.DrawString("" + freq, font, Brushes.Black, x, y - 18);
-                }
-            }
+            //if (topPeaks != null) {
+            //    int n = 0;
+            //    foreach (var peak in topPeaks) {
+            //        float x = peak.maxIndex - 5.0f;//(peak.lowIndex + peak.highIndex) / 2f - 5.0f;
+            //        float y = Math.Max(height - 14 - peak.maxValue * 30, 100);
+            //        graphics.DrawString("" + ++n, font, Brushes.Black, x, y - 2);
+            //        float freq = peak.maxIndex * freqPerIndex;//(peak.lowIndex + peak.highIndex) / 2f * freqPerIndex;
+            //        graphics.DrawString("" + freq, font, Brushes.Black, x, y - 18);
+            //    }
+            //}
 
             if (fundamentalFrequency != -1) {
                 graphics.DrawString("Fundamental: " + fundamentalFrequency.ToString("0.00") + "hz", font, Brushes.Black, width - 200, 10);
@@ -327,10 +338,10 @@ namespace SpectrumDisplay {
                 // Plot the harmonics
                 for (int i = 0; i < harmonicValues.Length; i++) {
                     float x1 = (i + 1) * fundamentalFrequency / freqPerIndex;
-                    float y1 = height / 2 - harmonicValues[i] * 8f;
+                    float y1 = height / 2 - harmonicValues[i] * 8f * (float)Math.Sqrt(i);
                     if (i < harmonicValues.Length - 1) {
                         float x2 = (i + 2) * fundamentalFrequency / freqPerIndex;
-                        float y2 = height / 2 - harmonicValues[i + 1] * 8f;
+                        float y2 = height / 2 - harmonicValues[i + 1] * 8f * (float)Math.Sqrt(i + 1);
                         graphics.DrawLine(Pens.Black, x1, y1, x2, y2);
                     }
 

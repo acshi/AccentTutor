@@ -272,39 +272,60 @@ namespace SpectrumAnalyzer {
             return bestFundamentalFreq;
         }
 
-        // Adds new fundamental to a list of the last found fundamentals, returns the median to eliminate outliers
-        public static float MakeSmoothedFundamental(float newFundamental, float[] lastObservedFundamentals) {
-            if (newFundamental != -1) {
-                // shift in the new observed value
-                Array.Copy(lastObservedFundamentals, 1, lastObservedFundamentals, 0, lastObservedFundamentals.Length - 1);
-                lastObservedFundamentals[lastObservedFundamentals.Length - 1] = newFundamental;
+        // Returns the median formant by frequency in the array
+        public static Formant GetMedianFormant(Formant[] fs) {
+            var sortedFs = fs.Where(f => f.freq != 0.0f).DefaultIfEmpty().OrderBy(f => f.freq);
+            Formant medianF = sortedFs.ElementAt(sortedFs.Count() / 2);
+            if (sortedFs.Count() > 1 && sortedFs.Count() % 2 == 1) {
+                Formant medianF2 = sortedFs.ElementAt(sortedFs.Count() / 2 - 1);
+                medianF.freq = (medianF.freq + medianF2.freq) / 2;
+                medianF.value = (medianF.value + medianF2.value) / 2;
             }
-            var sortedFs = lastObservedFundamentals.Where(f => f != 0).DefaultIfEmpty(-1).OrderBy(f => f);
+
+            return medianF;
+        }
+
+        public static void PerformFormantAnalysis(float[][] lastSpectrums, out float fundamental, out float[] harmonicSeries, out Formant[] formants) {
+            var presentLastSpectrums = lastSpectrums.Where(s => s != null);
+            
+            // Find median fundamental (f0)
+            var lastFundamentals = presentLastSpectrums.Select(spectrum => IdentifyFundamental(spectrum)).ToArray();
+            var sortedFs = lastFundamentals.Where(f => f != 0).DefaultIfEmpty(-1).OrderBy(f => f);
+
             float medianF = sortedFs.ElementAt(sortedFs.Count() / 2);
             if (sortedFs.Count() > 1 && sortedFs.Count() % 2 == 1) {
                 medianF = (medianF + sortedFs.ElementAt(sortedFs.Count() / 2 - 1)) / 2f;
             }
             if (medianF == 0) {
-                return -1;
+                fundamental = -1;
+                harmonicSeries = null;
+                formants = null;
+                return;
             }
-            return medianF;//lastChosenFundamentals.Where(f => f != 0).DefaultIfEmpty(-1).Average();
-        }
+            fundamental = medianF;
 
-        // Uses two arrays to remove outlier fundamentals and smooth changes.
-        public static float MakeSmoothedFundamental2(float newFundamental, float[] lastObservedFundamentals, float[] lastChosenFundamentals) {
-            if (newFundamental != -1) {
-                float priorFundAvg = lastObservedFundamentals.Where(f => f != 0).DefaultIfEmpty(newFundamental).Average();
-                if (Math.Max(priorFundAvg, newFundamental) / Math.Min(priorFundAvg, newFundamental) < 1.3f) {
-                    // Shift in the new chosen value
-                    Array.Copy(lastChosenFundamentals, 1, lastChosenFundamentals, 0, lastChosenFundamentals.Length - 1);
-                    lastChosenFundamentals[lastChosenFundamentals.Length - 1] = newFundamental;
-                }
+            // Find apparent formants
+            var lastHarmonicSeries = presentLastSpectrums.Select(spectrum => EvaluateHarmonicSeries(spectrum, medianF));
+            var lastApparentFormants = lastHarmonicSeries.Select(harmonics => IdentifyApparentFormants(medianF, harmonics, 0.8f));
+            harmonicSeries = lastHarmonicSeries.Last();
 
-                // shift in the new observed value
-                Array.Copy(lastObservedFundamentals, 1, lastObservedFundamentals, 0, lastObservedFundamentals.Length - 1);
-                lastObservedFundamentals[lastObservedFundamentals.Length - 1] = newFundamental;
-            }
-            return lastChosenFundamentals.Where(f => f != 0).DefaultIfEmpty(-1).Average();
+            var medianFormants = new Formant[3];
+            // The formants...
+            Formant[] f1s = lastApparentFormants.Select(apparentFs => apparentFs.Where(f => f.freq < 1400).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
+            medianFormants[0] = GetMedianFormant(f1s);
+
+            Formant[] f2s = lastApparentFormants.Select(apparentFs =>
+                                apparentFs.Where(f => f.freq > 500 && f.freq < 3000 && Math.Abs(f.freq - medianFormants[0].freq) > 100).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
+            medianFormants[1] = GetMedianFormant(f2s);
+
+            Formant[] f3s = lastApparentFormants.Select(apparentFs =>
+                                apparentFs.Where(f => f.freq > 1500 && Math.Abs(f.freq - medianFormants[1].freq) > 100).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
+            medianFormants[2] = GetMedianFormant(f3s);
+
+            // Don't let any of these be backwards!
+            medianFormants = medianFormants.OrderBy(f => f.freq).ToArray();
+
+            formants = medianFormants;
         }
 
         // Finds the amplitude of each harmonic based on the given fundamental
@@ -403,7 +424,7 @@ namespace SpectrumAnalyzer {
         // From all the apparent formants, decides on which actually seem to be F1, F2, and F3.
         // The decision will be based on finding a better match for one of the given vowels
         // The return array will have 3 entries, but if a formant is not found, that formant will have 0 values.
-        public static Formant[] IdentifyFormants123(Formant[] apparentFormants, Vowel[] vowels) {
+        public static Formant[] IdentifyFormants123(Formant[] apparentFormants) {
             // Simply choose the highest value formants in each of three ranges, exluding already chosen values
             //F1 between 0 and 1400Hz
             //F2 between 500 and 4000Hz
@@ -411,23 +432,8 @@ namespace SpectrumAnalyzer {
             //But all apparent formants will have frequency < 4000Hz.
             var formants123 = new Formant[3];
             formants123[0] = apparentFormants.Where(f => f.freq < 1400).DefaultIfEmpty().MaxBy(f => f.value);
-            formants123[1] = apparentFormants.Where(f => f.freq > 500 && f.freq != formants123[0].freq).DefaultIfEmpty().MaxBy(f => {
-                // Give a bonus to a formant that fits the f2 of a vowel that also fits f1
-                /*if (vowels.Any(v => v.formantLows[0] < formants123[0].freq && formants123[0].freq < v.formantHighs[0] &&
-                                    v.formantLows[1] < f.freq && f.freq < v.formantHighs[1])) {
-                    return f.value * 3.0f;
-                }*/
-                return f.value;
-            });
-            formants123[2] = apparentFormants.Where(f => f.freq > 1500 && f.freq != formants123[1].freq).DefaultIfEmpty().MaxBy(f => {
-                // Give a bonus to a formant that fits the f3 of a vowel that also fits f2
-                if (vowels.Any(v => v.formantLows[1] < formants123[1].freq && formants123[1].freq < v.formantHighs[1] &&
-                                    v.formantLows[2] < f.freq && f.freq < v.formantHighs[2])) {
-                    return f.value * 4f;
-                }
-                return f.value;
-            });
-
+            formants123[1] = apparentFormants.Where(f => f.freq > 500 && f.freq != formants123[0].freq).DefaultIfEmpty().MaxBy(f => f.value);
+            formants123[2] = apparentFormants.Where(f => f.freq > 1500 && f.freq != formants123[1].freq).DefaultIfEmpty().MaxBy(f => f.value);
 
             // Then just make sure that F1 < F2 < F3 and swap if necessary
             if (formants123[2].freq < formants123[1].freq) {
@@ -443,54 +449,6 @@ namespace SpectrumAnalyzer {
             return formants123;
         }
 
-        // Adds new fundamental to a list of the last found fundamentals, returns the median to eliminate outliers
-        public static Formant[] MakeSmoothedFormants123(Formant[] newFormants123, Formant[][] lastObservedFormants) {
-            var formants = new Formant[3];
-
-            // shift in the new apparent values
-            Array.Copy(lastObservedFormants, 1, lastObservedFormants, 0, lastObservedFormants.Length - 1);
-            lastObservedFormants[lastObservedFormants.Length - 1] = newFormants123;
-
-            for (int i = 0; i < 3; i++) {
-                var sortedFs = lastObservedFormants.Where(fs => fs != null).Select(fs => fs[i]).Where(f => f.freq != 0.0f).DefaultIfEmpty().OrderBy(f => f.freq);
-                Formant medianF = sortedFs.ElementAt(sortedFs.Count() / 2);
-                formants[i] = medianF;
-                if (sortedFs.Count() > 1 && sortedFs.Count() % 2 == 1) {
-                    Formant medianF2 = sortedFs.ElementAt(sortedFs.Count() / 2 - 1);
-                    formants[i].freq = (formants[i].freq + medianF2.freq) / 2;
-                    formants[i].value = (formants[i].value + medianF2.value) / 2;
-                }
-            }
-
-            return formants;
-        }
-
-        // Uses two arrays to remove outlier formant values and smooth changes.
-        public static Formant[] MakeSmoothedFormants123_2(Formant[] newFormants123, Formant[][] lastObservedFormants, Formant[][] lastAcceptedFormants) {
-            var formants = new Formant[3];
-            for (int i = 0; i < 3; i++) {
-                if (newFormants123[i].value != 0) {
-                    float priorFormantFAvg = lastObservedFormants.Where(fs => fs != null).Select(fs => fs[i].freq)
-                                                                 .Where(f => f != 0.0f).DefaultIfEmpty(newFormants123[i].freq).Average();
-
-                    if (Math.Max(priorFormantFAvg, newFormants123[i].freq) / Math.Min(priorFormantFAvg, newFormants123[i].freq) < 1.3f) {
-                        // Shift in the accepted values
-                        Array.Copy(lastAcceptedFormants[i], 1, lastAcceptedFormants[i], 0, lastAcceptedFormants[i].Length - 1);
-                        lastAcceptedFormants[i][lastAcceptedFormants[i].Length - 1] = newFormants123[i];
-                    }
-                }
-
-                formants[i].freq = lastAcceptedFormants[i].Where(f => f.freq != 0.0f).DefaultIfEmpty().Average(f => f.freq);
-                formants[i].value = lastAcceptedFormants[i].Where(f => f.freq != 0.0f).DefaultIfEmpty().Average(f => f.value);
-            }
-
-            // shift in the new apparent values
-            Array.Copy(lastObservedFormants, 1, lastObservedFormants, 0, lastObservedFormants.Length - 1);
-            lastObservedFormants[lastObservedFormants.Length - 1] = newFormants123;
-
-            return formants;
-        }
-        
         public static VowelMatching MatchVowel(Formant[] apparentFormants, float fundamentalFrequency, Vowel v) {
             VowelMatching bestMatching = new VowelMatching();
             bestMatching.score = float.MaxValue;
