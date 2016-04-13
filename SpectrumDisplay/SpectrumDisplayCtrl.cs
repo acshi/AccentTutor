@@ -23,9 +23,6 @@ namespace SpectrumDisplay {
         AudioIn audioIn;
         FftProcessor fftProcessor;
 
-        const float RECORDING_TOLERANCE = 0.002f;
-        const int SPECTRUMS_PER_TAKE = 10;
-
         string language = "english";
 
         // Prevent race conditions with updating the UI
@@ -36,13 +33,12 @@ namespace SpectrumDisplay {
         bool isMeasuring = false;
         bool isAnalyzingFile = false;
         bool isLive = false;
-
-        float[] fftData;
+        
         float[] fft;
-        float[] spectrum;
         float[] harmonicValues = null;
 
-        float[][] lastSpectrums = new float[8][];
+        float[][] lastFfts = new float[8][];
+        float[] lastFundamentals = new float[8];
 
         //Formant[][] lastObservedFormants = new Formant[4][];
         //Formant[][] lastAcceptedFormants = new Formant[3][]; // one array of last accepted values for each of f1, f2, and f3.
@@ -202,36 +198,36 @@ namespace SpectrumDisplay {
             //safeToChangeUIVariables.WaitOne(); // Block while painting UI
 
             //if (isLive) {
-            spectrum = fft;
             //} else {
             //string vowel = VowelData.Vowels[currentVowelI];
             //spectrum = vowelLearner.GetSpectrum(vowel);
             //}
 
-            if (spectrum != null) {
-                spectrum = (float[])spectrum.Clone(); // So we can modify it in the high-pass filter
+            if (fft != null) {
+                fft = (float[])fft.Clone(); // So we can modify it in the high-pass filter
 
                 // Square it to get power instead of just amplitude
-                spectrum = spectrum.Select(v => v * v).ToArray();
+                fft = fft.Select(v => v * v).ToArray();
 
                 // Remove DC with a high-pass filter
-                float lastIn = spectrum[0];
+                float lastIn = fft[0];
                 float lastOut = lastIn;
                 float alpha = 0.96f;
-                for (int i = 1; i < spectrum.Length; i++) {
-                    float inValue = spectrum[i];
+                for (int i = 1; i < fft.Length; i++) {
+                    float inValue = fft[i];
                     float outValue = alpha * (lastOut + inValue - lastIn);
                     lastIn = inValue;
                     lastOut = outValue;
-                    spectrum[i] = outValue;
+                    fft[i] = outValue;
                 }
 
                 // Z-score it, put negative values at 0.
-                float average = spectrum.Average();
-                float stdDev = (float)Math.Sqrt(spectrum.Select(num => (num - average) * (num - average)).Average());
-                spectrum = spectrum.Select(num => Math.Max((num - average) / stdDev, 0)).ToArray();
-
+                float average = fft.Average();
+                float stdDev = (float)Math.Sqrt(fft.Select(num => (num - average) * (num - average)).Average());
+                fft = fft.Select(num => Math.Max((num - average) / stdDev, 0)).ToArray();
+                
                 // Consider it noise/silence if the stdDev is too low
+                Debug.WriteLine(stdDev);
                 if (stdDev > 1e7) {
                     /*topPeaks = GetTopPeaks(spectrum, 32);
                     float newFundamental = IdentifyFundamental(spectrum);//IdentifyFundamental(topPeaks, out fundamentalsPeaks);
@@ -250,15 +246,25 @@ namespace SpectrumDisplay {
                     }*/
 
                     // Shift in the new fft
-                    Array.Copy(lastSpectrums, 1, lastSpectrums, 0, lastSpectrums.Length - 1);
-                    lastSpectrums[lastSpectrums.Length - 1] = spectrum;
+                    Array.Copy(lastFfts, 1, lastFfts, 0, lastFfts.Length - 1);
+                    lastFfts[lastFfts.Length - 1] = fft;
 
-                    PerformFormantAnalysis(lastSpectrums, out fundamentalFrequency, out harmonicValues, out formants);
+                    // Shift in new fundamental
+                    Array.Copy(lastFundamentals, 1, lastFundamentals, 0, lastFundamentals.Length - 1);
+                    lastFundamentals[lastFundamentals.Length - 1] = IdentifyFundamental(fft);
+
+                    PerformFormantAnalysis(lastFfts, lastFundamentals, out fundamentalFrequency, out harmonicValues, out formants);
                     vowelMatchings = IdentifyVowel(formants, fundamentalFrequency);
 
                     if (isMeasuring) {
                         vowelObservations.Add(formants);
                     }
+                } else {
+                    // Shift in null and 0 values to clear out the buffer.
+                    Array.Copy(lastFfts, 1, lastFfts, 0, lastFfts.Length - 1);
+                    lastFfts[lastFfts.Length - 1] = null;
+                    Array.Copy(lastFundamentals, 1, lastFundamentals, 0, lastFundamentals.Length - 1);
+                    lastFundamentals[lastFundamentals.Length - 1] = 0;
                 }
             } else {
                 fundamentalFrequency = -1;
@@ -270,18 +276,19 @@ namespace SpectrumDisplay {
         }
 
         private void HandleFftData(object sender, FftDataAvailableHandlerArgs e) {
-            fftData = e.FftData;
+            float[] rawFft = e.FftData;
 
             float deltaFreq = (float)AudioIn.SAMPLE_RATE / FftProcessor.FFT_LENGTH;
             // Operate only on frequencies through MAX_FREQ that may be involved in formants
-            fft = fftData.Take((int)(Analyzer.MAX_FREQ / deltaFreq + 0.5f)).ToArray();
+            float[] newFft = rawFft.Take((int)(Analyzer.MAX_FREQ / deltaFreq + 0.5f)).ToArray();
             // Normalize the fft
-            fft = fft.Select(a => (float)(a / Math.Sqrt(FftProcessor.FFT_LENGTH))).ToArray();
+            newFft = newFft.Select(a => (float)(a / Math.Sqrt(FftProcessor.FFT_LENGTH))).ToArray();
             // Negative values differ only by phase, use positive ones instead
-            fft = fft.Select(a => Math.Abs(a)).ToArray();
+            newFft = newFft.Select(a => Math.Abs(a)).ToArray();
             // Remove DC component (and close to it)
-            fft[0] = fft[1] = fft[2] = 0;
+            newFft[0] = newFft[1] = newFft[2] = 0;
 
+            fft = newFft;
             prepareVisualization();
         }
 
@@ -291,10 +298,7 @@ namespace SpectrumDisplay {
             //safeToDrawUI.WaitOne(); // Block while GUI referenced things are referenced
 
             Graphics graphics = pe.Graphics;
-
-            float width = this.Width;
-            float height = this.Height;
-
+            
             float freqPerIndex = (float)AudioIn.SAMPLE_RATE / FftProcessor.FFT_LENGTH;
 
             graphics.ScaleTransform(1920 / 2000f, 1);
@@ -304,19 +308,12 @@ namespace SpectrumDisplay {
             }
             Font font = new Font(FontFamily.GenericSerif, 14.0f);
 
-            if (spectrum != null) {
-                float deltaX = width / fftData.Length * 2;
-                float partsPerX = (fftData.Length / 20) / width;
-                for (int x = 0; x < spectrum.Length; x++) {
-                    float y = spectrum[x] * 30;
-                    // Draw the peak centers in different colors
-                    //if (fundamentalsPeaks != null && fundamentalsPeaks.Any(peak => peak.lowIndex <= x && x <= peak.highIndex)) {
-                    //    graphics.DrawLine(Pens.Magenta, x, height, x, height - y);
-                    //} else if (topPeaks != null && topPeaks.Any(peak => peak.lowIndex <= x && x <= peak.highIndex)) {
-                    //    graphics.DrawLine(Pens.Red, x, height, x, height - y);
-                    //} else {
-                    graphics.DrawLine(Pens.Black, x, height, x, height - y);
-                    //}
+            if (fft != null) {
+                // Paint only every other entry to save time
+                for (int x = 0; x + 1 < fft.Length; x += 2) {
+                    float y = Math.Max(fft[x], fft[x + 1]) * 30;
+                    //graphics.DrawLine(Pens.Black, x, Height, x + 1, Height - y);
+                    graphics.FillRectangle(Brushes.Black, x, Height - y, 2, y);
                 }
             }
 
@@ -333,19 +330,19 @@ namespace SpectrumDisplay {
             //}
 
             if (fundamentalFrequency != -1) {
-                graphics.DrawString("Fundamental: " + fundamentalFrequency.ToString("0.00") + "hz", font, Brushes.Black, width - 200, 10);
+                graphics.DrawString("Fundamental: " + fundamentalFrequency.ToString("0.00") + "hz", font, Brushes.Black, Width - 200, 10);
 
                 // Plot the harmonics
                 for (int i = 0; i < harmonicValues.Length; i++) {
                     float x1 = (i + 1) * fundamentalFrequency / freqPerIndex;
-                    float y1 = height / 2 - harmonicValues[i] * 8f * (float)Math.Sqrt(i);
+                    float y1 = Height / 2 - harmonicValues[i] * 8f * (float)Math.Sqrt(i + 1);
                     if (i < harmonicValues.Length - 1) {
                         float x2 = (i + 2) * fundamentalFrequency / freqPerIndex;
-                        float y2 = height / 2 - harmonicValues[i + 1] * 8f * (float)Math.Sqrt(i + 1);
+                        float y2 = Height / 2 - harmonicValues[i + 1] * 8f * (float)Math.Sqrt(i + 2);
                         graphics.DrawLine(Pens.Black, x1, y1, x2, y2);
                     }
 
-                    graphics.DrawString("" + harmonicValues[i].ToString("0.0"), font, Brushes.Black, x1 - 21, height / 2);
+                    graphics.DrawString("" + harmonicValues[i].ToString("0.0"), font, Brushes.Black, x1 - 21, Height / 2);
                 }
 
                 // Draw peaks and formant frequencies
@@ -357,11 +354,11 @@ namespace SpectrumDisplay {
                     /*if (x > 1920) { // Keep final formant text on the screen
                         x = 1920;
                     }*/
-                    float y = height / 2 - 20;// - apFormantValue * 8f - 20;
+                    float y = Height / 2 - 20;// - apFormantValue * 8f - 20;
                     graphics.DrawString("F" + (i + 1) + ":" + apFormantFreq.ToString("0"), font, Brushes.Black, x, y);
 
                     if (vowelMatchings != null) {
-                        foreach (var vowelMatching in vowelMatchings.OrderBy(m => m.score).Index().Take(8)) {
+                        foreach (var vowelMatching in vowelMatchings.OrderBy(m => m.score).Index().Take(4)) {
                             int index = vowelMatching.Key;
                             float c = vowelMatching.Value.c;
                             var formantMatch = vowelMatching.Value.matches.Where(p => formants[p.Item2].freq == apFormantFreq);
@@ -376,13 +373,13 @@ namespace SpectrumDisplay {
                 }
 
                 if (vowelMatchings != null) {
-                    foreach (var vowelMatching in vowelMatchings.OrderBy(m => m.score).Index().Take(8)) {
+                    foreach (var vowelMatching in vowelMatchings.OrderBy(m => m.score).Index().Take(4)) {
                         int index = vowelMatching.Key;
                         string vowel = vowelMatching.Value.vowel;
                         Vowel v = GetVowel(language, vowel);
                         float score = vowelMatching.Value.score;
-                        graphics.DrawString("Vowel " + index + ": /" + vowel + "/" + " score: " + score, font, Brushes.Black, width - 280, 30 + index * 40);
-                        graphics.DrawString(v.description, font, Brushes.Black, width - 280, 50 + index * 40);
+                        graphics.DrawString("Vowel " + index + ": /" + vowel + "/" + " score: " + score, font, Brushes.Black, Width - 280, 30 + index * 40);
+                        graphics.DrawString(v.description, font, Brushes.Black, Width - 280, 50 + index * 40);
                     }
                 }
             }

@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
-using fftwlib;
+using MathNet.Numerics.IntegralTransforms;
+using MathNet.Numerics;
+//using fftwlib;
 
 namespace SpectrumAnalyzer {
     public class FftDataAvailableHandlerArgs : EventArgs {
@@ -28,14 +30,17 @@ namespace SpectrumAnalyzer {
         private bool isDisposed = false;
 
         //public const int SAMPLES_IN_FFT = 44100 / 2;
-        public const int SAMPLES_IN_UPDATE = 44100 / 20;
-        public const int FFT_LENGTH = 44100 / 4;
+        public const int SAMPLES_IN_UPDATE = 44100 / 5;
+        public const int FFT_LENGTH = 16384;
 
-        IntPtr fftwDataIn;
-        IntPtr fftwDataOut;
-        IntPtr fftwPlan;
+        //IntPtr fftwDataIn;
+        //IntPtr fftwDataOut;
+        //IntPtr fftwPlan;
 
-        float[] dataIn;
+        //float[] dataIn;
+        //float[] dataOut;
+        Complex[] dataIn;
+        Complex[] complexDataOut;
         float[] dataOut;
 
         public FftDataAvailableHandler FftDataAvilable;
@@ -46,25 +51,27 @@ namespace SpectrumAnalyzer {
 
         void initFftw(int n) {
             //create two unmanaged arrays, properly aligned
-            fftwDataIn = fftwf.malloc(n * sizeof(float));
-            fftwDataOut = fftwf.malloc(n * sizeof(float));
+            //fftwDataIn = fftwf.malloc(n * sizeof(float));
+            //fftwDataOut = fftwf.malloc(n * sizeof(float));
 
             //create two managed arrays, possibly misalinged
-            dataIn = new float[n];
+            //dataIn = new float[n];
+            dataIn = new Complex[n];
+            complexDataOut = new Complex[n];
             dataOut = new float[n];
 
             //copy managed arrays to unmanaged arrays
-            Marshal.Copy(dataIn, 0, fftwDataIn, dataIn.Length);
-            Marshal.Copy(dataOut, 0, fftwDataOut, dataOut.Length);
+            //Marshal.Copy(dataIn, 0, fftwDataIn, dataIn.Length);
+            //Marshal.Copy(dataOut, 0, fftwDataOut, dataOut.Length);
 
             //create a few test transforms
-            fftwPlan = fftwf.r2r_1d(n, fftwDataIn, fftwDataOut, fftw_kind.DHT, fftw_flags.Measure);
+            //fftwPlan = fftwf.r2r_1d(n, fftwDataIn, fftwDataOut, fftw_kind.DHT, fftw_flags.Measure);
         }
 
         void freeFftw() {
-            fftwf.free(fftwDataIn);
-            fftwf.free(fftwDataOut);
-            fftwf.destroy_plan(fftwPlan);
+            //fftwf.free(fftwDataIn);
+            //fftwf.free(fftwDataOut);
+            //fftwf.destroy_plan(fftwPlan);
         }
 
         // The hann windowing function at i for a size N window.
@@ -87,13 +94,19 @@ namespace SpectrumAnalyzer {
             }
 
             // Copy the data over to the FFT's area
-            Marshal.Copy(dataIn, 0, fftwDataIn, dataIn.Length);
+            //Marshal.Copy(dataIn, 0, fftwDataIn, dataIn.Length);
 
             // Do the FFT!
-            fftwf.execute(fftwPlan);
+            //fftwf.execute(fftwPlan);
 
             // Get the data back!
-            Marshal.Copy(fftwDataOut, dataOut, 0, dataOut.Length);
+            //Marshal.Copy(fftwDataOut, dataOut, 0, dataOut.Length);
+
+            dataIn.CopyTo(complexDataOut, 0);
+            Fourier.Radix2Forward(complexDataOut, FourierOptions.NoScaling);
+            for (int i = 0; i < complexDataOut.Length; i++) {
+                dataOut[i] = (float)complexDataOut[i].Magnitude;
+            }
 
             if (FftDataAvilable != null) {
                 FftDataAvilable(this, new FftDataAvailableHandlerArgs(dataOut));

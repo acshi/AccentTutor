@@ -8,6 +8,7 @@ namespace AccentTutor {
         public AccentTutorFrm() {
             InitializeComponent();
             languageListBox.DataSource = new string[] { "english", "mandarin" };
+            languageListBox.SelectedItem = "mandarin";
         }
 
         private void AccentTutorFrm_Load(object sender, EventArgs e) {

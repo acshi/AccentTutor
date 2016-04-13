@@ -167,31 +167,45 @@ namespace SpectrumAnalyzer {
             return 0;
         }
 
+        // Applies memoization a function of a single argument
+        public static Func<A, R> Memoize<A, R>(this Func<A, R> f) {
+            var map = new Dictionary<A, R>();
+            return a =>
+            {
+                R value;
+                if (map.TryGetValue(a, out value))
+                    return value;
+                value = f(a);
+                map.Add(a, value);
+                return value;
+            };
+        }
+
         // Attempts to find the fundamental frequency captured by the fft values.
         public static float IdentifyFundamental(float[] spectrum) {
             float freqPerIndex = (float)SAMPLE_RATE / FftProcessor.FFT_LENGTH;
-
             double minValue = 0.0001;
+            var memoizedLog10 = Memoize<double, double>(Math.Log10); // Memoize because it is in a tight loop.
 
             // Use the Harmonic Product Spectrum
             double[] hps = new double[spectrum.Length];
             for (int i = 0; i < spectrum.Length; i++) {
-                hps[i] = Math.Max(minValue, spectrum[i]) * i;
+                hps[i] = Math.Max(minValue, spectrum[i]) * (i + 1);
             }
-
             for (int h = 2; h <= 26; h++) {
                 for (int i = 0; i < spectrum.Length; i++) {
                     if (i * h >= spectrum.Length) {
                         hps[i] *= minValue;
                     } else {
                         // Let it be off just a little to either side
-                        double maxInDownSample = 0;
-                        int plusMinus = (int)Math.Max(Math.Log10(i) * 1.5, (i * h) / 100.0);
+                        double maxInDownSample = minValue; // put a minimum value to avoid multiplying by 0.
+                        int plusMinus = (int)Math.Max(memoizedLog10(i) * 1.5, (i * h) / 100.0);
                         for (int j = Math.Max(0, i * h - plusMinus); j <= i * h + plusMinus && j < spectrum.Length; j++) {
-                            maxInDownSample = Math.Max(maxInDownSample, spectrum[j]);
+                            if (spectrum[j] > maxInDownSample) {
+                                maxInDownSample = spectrum[j];
+                            }
                         }
-                        
-                        hps[i] *= Math.Max(minValue, maxInDownSample * i / h); // put a minimum value to avoid multiplying by 0.
+                        hps[i] *= maxInDownSample * (i + 1) / h;
                     }
                 }
             }
@@ -215,88 +229,39 @@ namespace SpectrumAnalyzer {
             return bestFrequency;
         }
 
-        // Attempts to find the fundamental frequency captured by the fft values.
-        public static float IdentifyFundamental2(Peak[] topPeaks, out Peak[] fundamentalsPeaks) {
-            float freqPerIndex = (float)SAMPLE_RATE / FftProcessor.FFT_LENGTH;
-
-            float bestFundamentalFreq = -1;
-            fundamentalsPeaks = null;
-            
-            var orderedPeaks = topPeaks.OrderBy(peak => peak.lowIndex).ToArray();
-            // Consider all the deltas between peaks, both by amplitude, and then sequence
-            var potentialFundamentals = topPeaks.ZipLongest(orderedPeaks.Skip(1), (a, b) => {
-                //int lowBound = b.lowIndex - a.highIndex; // low bound for index of frequency
-                //int highBound = b.highIndex - a.lowIndex; // range of frequency above the low bound
-                return (float)Math.Abs(b.maxIndex - a.maxIndex) * freqPerIndex;//(lowBound + highBound) / 2f;
-            });
-            potentialFundamentals = potentialFundamentals.Concat(orderedPeaks.ZipLongest(orderedPeaks.Skip(1), (a, b) => {
-                //int lowBound = b.lowIndex - a.highIndex; // low bound for index of frequency
-                //int highBound = b.highIndex - a.lowIndex; // range of frequency above the low bound
-                return (float)(b.maxIndex - a.maxIndex) * freqPerIndex;//(lowBound + highBound) / 2f;
-            }));
-            // as well as the peaks themselves
-            potentialFundamentals = potentialFundamentals.Concat(orderedPeaks.Select(p => (float)p.maxIndex * freqPerIndex));//(p.lowIndex + p.highIndex) / 2f));
-
-            // Remove very low frequencies. We are talking about people here!
-            potentialFundamentals = potentialFundamentals.Where(a => a >= 50f);
-
-            // One pass will yield more accurate frequencies for those that had any harmonic matches
-            var refinedFundamentals = new List<float>();
-            foreach (var fund in potentialFundamentals) {
-                float refinedFund;
-                Peak[] matchedPeaks;
-                ScoreOfPotentialFundamental(orderedPeaks, fund, out refinedFund, out matchedPeaks);
-                if (!refinedFundamentals.Contains(refinedFund)) {
-                    refinedFundamentals.Add(refinedFund);
-                }
-            }
-
-            refinedFundamentals.RemoveAll(f => f <= 50f); // Again, we don't want to allow too low frequencies
-
-            // A second pass will then find more harmonics with the improved frequencies
-            float bestScore = 0;
-            foreach (var fund in refinedFundamentals) {
-                float refinedFund;
-                Peak[] matchedPeaks;
-                float score = ScoreOfPotentialFundamental(orderedPeaks, fund, out refinedFund, out matchedPeaks);
-                if (score > bestScore) {
-                    if (refinedFund > 550) {
-                        refinedFund = 600;
-                    }
-                    bestScore = score;
-                    bestFundamentalFreq = refinedFund;
-                    fundamentalsPeaks = matchedPeaks;
-                }
-            }
-
-            return bestFundamentalFreq;
-        }
-
-        // Returns the median formant by frequency in the array
+        // Returns the median formant with median frequency and median amplitude in the array
         public static Formant GetMedianFormant(Formant[] fs) {
-            var sortedFs = fs.Where(f => f.freq != 0.0f).DefaultIfEmpty().OrderBy(f => f.freq);
-            Formant medianF = sortedFs.ElementAt(sortedFs.Count() / 2);
-            if (sortedFs.Count() > 1 && sortedFs.Count() % 2 == 1) {
-                Formant medianF2 = sortedFs.ElementAt(sortedFs.Count() / 2 - 1);
-                medianF.freq = (medianF.freq + medianF2.freq) / 2;
-                medianF.value = (medianF.value + medianF2.value) / 2;
+            var freqSortedFs = fs.Where(f => f.freq != 0.0f).DefaultIfEmpty().OrderBy(f => f.freq);
+            float medianFreq = freqSortedFs.ElementAt(freqSortedFs.Count() / 2).freq;
+            if (freqSortedFs.Count() > 1 && freqSortedFs.Count() % 2 == 1) {
+                float medianFreq2 = freqSortedFs.ElementAt(freqSortedFs.Count() / 2 - 1).freq;
+                medianFreq = (medianFreq + medianFreq2) / 2;
             }
 
-            return medianF;
+            var ampSortedFs = fs.Where(f => f.freq != 0.0f).DefaultIfEmpty().OrderBy(f => f.value);
+            float medianAmp = ampSortedFs.ElementAt(ampSortedFs.Count() / 2).value;
+            if (ampSortedFs.Count() > 1 && ampSortedFs.Count() % 2 == 1) {
+                float medianAmp2 = ampSortedFs.ElementAt(ampSortedFs.Count() / 2 - 1).value;
+                medianAmp = (medianAmp + medianAmp2) / 2;
+            }
+
+            return new Formant(medianFreq, medianAmp);
         }
 
-        public static void PerformFormantAnalysis(float[][] lastSpectrums, out float fundamental, out float[] harmonicSeries, out Formant[] formants) {
-            var presentLastSpectrums = lastSpectrums.Where(s => s != null);
-            
+        public static void PerformFormantAnalysis(float[][] lastFfts, float[] lastFundamentals, out float fundamental, out float[] harmonicSeries, out Formant[] formants) {
+            var presentLastFfts = lastFfts.Where(s => s != null);
+
             // Find median fundamental (f0)
-            var lastFundamentals = presentLastSpectrums.Select(spectrum => IdentifyFundamental(spectrum)).ToArray();
+            // Don't calculate fundamentals -- too expensive. Let them be already calculated just one time each.
+
+            //var lastFundamentals = presentLastSpectrums.Select(spectrum => IdentifyFundamental(spectrum)).ToArray();
             var sortedFs = lastFundamentals.Where(f => f != 0).DefaultIfEmpty(-1).OrderBy(f => f);
 
             float medianF = sortedFs.ElementAt(sortedFs.Count() / 2);
             if (sortedFs.Count() > 1 && sortedFs.Count() % 2 == 1) {
                 medianF = (medianF + sortedFs.ElementAt(sortedFs.Count() / 2 - 1)) / 2f;
             }
-            if (medianF == 0) {
+            if (presentLastFfts.Count() == 0 || medianF == 0) {
                 fundamental = -1;
                 harmonicSeries = null;
                 formants = null;
@@ -305,17 +270,17 @@ namespace SpectrumAnalyzer {
             fundamental = medianF;
 
             // Find apparent formants
-            var lastHarmonicSeries = presentLastSpectrums.Select(spectrum => EvaluateHarmonicSeries(spectrum, medianF));
+            var lastHarmonicSeries = presentLastFfts.Select(spectrum => EvaluateHarmonicSeries(spectrum, medianF));
             var lastApparentFormants = lastHarmonicSeries.Select(harmonics => IdentifyApparentFormants(medianF, harmonics, 0.8f));
             harmonicSeries = lastHarmonicSeries.Last();
 
             var medianFormants = new Formant[3];
             // The formants...
-            Formant[] f1s = lastApparentFormants.Select(apparentFs => apparentFs.Where(f => f.freq < 1400).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
+            Formant[] f1s = lastApparentFormants.Select(apparentFs => apparentFs.Where(f => f.freq >= 250 && f.freq < 1400).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
             medianFormants[0] = GetMedianFormant(f1s);
 
             Formant[] f2s = lastApparentFormants.Select(apparentFs =>
-                                apparentFs.Where(f => f.freq > 500 && f.freq < 3000 && Math.Abs(f.freq - medianFormants[0].freq) > 100).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
+                                apparentFs.Where(f => f.freq > 600 && f.freq < 3000 && Math.Abs(f.freq - medianFormants[0].freq) > 100).DefaultIfEmpty().MaxBy(f => f.value)).ToArray();
             medianFormants[1] = GetMedianFormant(f2s);
 
             Formant[] f3s = lastApparentFormants.Select(apparentFs =>
@@ -343,8 +308,22 @@ namespace SpectrumAnalyzer {
                 //return Enumerable.Range(lowIndex, highIndex - lowIndex)
                 //       .Select(i => spectrum[i]).Sum();
                 // Find the maximum value in the range
-                return Enumerable.Range(lowIndex, highIndex - lowIndex)
-                       .Select(i => spectrum[i]).Max();
+                float maxValue = 0;
+                for (int i = lowIndex; i <= highIndex; i++) {
+                    if (spectrum[i] > maxValue) {
+                        maxValue = spectrum[i];
+                    }
+                }
+
+                // The android microphone is way more sensitive to lower frequencies, which causes the fundamental
+                // To often be over competitive in the harmonic series. So we discount it here heavily for lower frequencies
+                if (fundamentalFreq < 250 && n == 1) {
+                    //maxValue /= 20f;
+                }
+
+                return maxValue;
+                //return Enumerable.Range(lowIndex, highIndex - lowIndex)
+                //       .Select(i => spectrum[i]).Max();
             }).ToArray();
         }
 
@@ -419,34 +398,6 @@ namespace SpectrumAnalyzer {
                 }
             }
             return apparentFormants.ToArray();
-        }
-
-        // From all the apparent formants, decides on which actually seem to be F1, F2, and F3.
-        // The decision will be based on finding a better match for one of the given vowels
-        // The return array will have 3 entries, but if a formant is not found, that formant will have 0 values.
-        public static Formant[] IdentifyFormants123(Formant[] apparentFormants) {
-            // Simply choose the highest value formants in each of three ranges, exluding already chosen values
-            //F1 between 0 and 1400Hz
-            //F2 between 500 and 4000Hz
-            //F3 between 1500 and 4000Hz
-            //But all apparent formants will have frequency < 4000Hz.
-            var formants123 = new Formant[3];
-            formants123[0] = apparentFormants.Where(f => f.freq < 1400).DefaultIfEmpty().MaxBy(f => f.value);
-            formants123[1] = apparentFormants.Where(f => f.freq > 500 && f.freq != formants123[0].freq).DefaultIfEmpty().MaxBy(f => f.value);
-            formants123[2] = apparentFormants.Where(f => f.freq > 1500 && f.freq != formants123[1].freq).DefaultIfEmpty().MaxBy(f => f.value);
-
-            // Then just make sure that F1 < F2 < F3 and swap if necessary
-            if (formants123[2].freq < formants123[1].freq) {
-                Formant f = formants123[2];
-                formants123[2] = formants123[1];
-                formants123[1] = f;
-            }
-            if (formants123[1].freq < formants123[0].freq) {
-                Formant f = formants123[1];
-                formants123[1] = formants123[0];
-                formants123[0] = f;
-            }
-            return formants123;
         }
 
         public static VowelMatching MatchVowel(Formant[] apparentFormants, float fundamentalFrequency, Vowel v) {

@@ -35,15 +35,15 @@ namespace SpectrumAnalyzer {
         };
 
         public static Vowel[] MandarinVowels = {
-new Vowel("a", "as in a/阿", new float[] { 937, 1448, 3206 }, new float[] { 1036, 1571, 3338 }, new int[] { 99, 123, 132 }, new int[] { -1, -10, -23 }),
-new Vowel("e", "as in e/饿", new float[] { 444, 1073, 3500 }, new float[] { 482, 1246, 3700 }, new int[] { 38, 173, 200 }, new int[] { 0, -14, -22 }),
-new Vowel("ê", "as in mei/美", new float[] { 609, 1792, 2620 }, new float[] { 653, 1946, 2878 }, new int[] { 45, 154, 258 }, new int[] { -1, -8, -17 }),
-new Vowel("o", "as in wo/我", new float[] { 546, 801, 3153 }, new float[] { 670, 882, 3259 }, new int[] { 124, 81, 106 }, new int[] { -1, -7, -25 }),
-new Vowel("u", "as in wu/五", new float[] { 308, 1016, 3510 }, new float[] { 379, 1297, 3640 }, new int[] { 71, 281, 130 }, new int[] { -1, -37, -39 }),
-new Vowel("i", "as in yi/已", new float[] { 358, 2307, 3270 }, new float[] { 386, 2369, 3512 }, new int[] { 30, 62, 242 }, new int[] { -1, -17, -10 }),
-new Vowel("ü", "as in yu/雨", new float[] { 319, 2059, 3037 }, new float[] { 372, 2144, 3286 }, new int[] { 54, 85, 249 }, new int[] { -1, -12, -12 }),
-new Vowel("r", "as in ri/日", new float[] { 333, 1617, 2723 }, new float[] { 360, 1741, 2920 }, new int[] { 30, 124, 198 }, new int[] { -1, -7, -15 }),
-new Vowel("ɨ", "as in zi/子", new float[] { 346, 1489, 2487 }, new float[] { 326, 1510, 2598 }, new int[] { 30, 30, 111 }, new int[] { -1, -15, -23 }),
+            new Vowel("a", "as in a/阿", new float[] { 937, 1465, 3207 }, new float[] { 1036, 1620, 3327 }, new int[] { 99, 154, 119 }, new int[] { -1, -7, -23 }),
+            new Vowel("e", "as in e/饿", new float[] { 433, 1075, 3428 }, new float[] { 521, 1254, 3654 }, new int[] { 88, 179, 226 }, new int[] { 0, -13, -20 }),
+            new Vowel("ê", "as in mei/美", new float[] { 609, 1792, 2620 }, new float[] { 653, 1946, 2878 }, new int[] { 45, 154, 258 }, new int[] { 0, -8, -16 }),
+            new Vowel("o", "as in wo/我", new float[] { 564, 798, 3234 }, new float[] { 690, 874, 3401 }, new int[] { 126, 76, 167 }, new int[] { 0, -3, -24 }),
+            new Vowel("u", "as in wu/五", new float[] { 308, 1052, 3467 }, new float[] { 379, 1352, 3617 }, new int[] { 71, 300, 150 }, new int[] { 0, -35, -37 }),
+            new Vowel("i", "as in yi/已", new float[] { 358, 2389, 3244 }, new float[] { 386, 2560, 3487 }, new int[] { 30, 171, 243 }, new int[] { 0, -17, -13 }),
+            new Vowel("ü", "as in yu/雨", new float[] { 319, 2000, 3041 }, new float[] { 372, 2069, 3297 }, new int[] { 54, 68, 256 }, new int[] { 0, -12, -11 }),
+            new Vowel("r", "as in ri/日", new float[] { 333, 1617, 2706 }, new float[] { 360, 1741, 2870 }, new int[] { 30, 124, 164 }, new int[] { -1, -5, -13 }),
+            new Vowel("ɨ", "as in zi/子", new float[] { 336, 1489, 2487 }, new float[] { 336, 1510, 2598 }, new int[] { 30, 30, 111 }, new int[] { 0, -13, -24 }),
 
             /*new Vowel("a", "as in a/阿", new float[] { 896, 2516, 3066 }, new float[] { 988, 2677, 3381 }, new int[] { 32, 50, 136 }, new int[] { -2, -16, -19 }),
             new Vowel("e", "as in e/饿", new float[] { 544, 1611, 3049 }, new float[] { 594, 1703, 3191 }, new int[] { 19, 38, 46 }, new int[] { 0, -17, -22 }),
