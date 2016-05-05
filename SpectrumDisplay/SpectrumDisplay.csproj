@@ -105,11 +105,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="libfftw3f-3.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\SpectrumAnalyzer\SpectrumAnalyzer.csproj">
       <Project>{38af1044-955c-4b52-84f9-fbde2c0d21c4}</Project>
       <Name>SpectrumAnalyzer</Name>

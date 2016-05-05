@@ -109,6 +109,7 @@ namespace SpectrumDisplay {
         }
 
         private void saveVowelBtn_Click(object sender, EventArgs e) {
+            saveFileDialog.FileName = openFileDialog.FileName.Substring(0, openFileDialog.FileName.IndexOf("."));
             if (saveFileDialog.ShowDialog() == DialogResult.OK) {
                 StringBuilder csv = new StringBuilder("f1,f2,f3,a1,a2,a3\n");
                 foreach (var o in vowelObservations) {
@@ -149,7 +150,7 @@ namespace SpectrumDisplay {
                     fftProcessor.ProcessSamples(buffer);
 
                     // Give it time to animate a little
-                    Thread.Sleep(2000 * FftProcessor.SAMPLES_IN_UPDATE / AudioIn.SAMPLE_RATE);
+                    //Thread.Sleep(2000 * FftProcessor.SAMPLES_IN_UPDATE / AudioIn.SAMPLE_RATE);
                     iteration++;
                 }
                 reader.Close();
