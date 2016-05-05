@@ -191,7 +191,7 @@ namespace SpectrumAnalyzer {
                                 maxInDownSample = spectrum[j];
                             }
                         }
-                        hps[i] *= maxInDownSample * (i + 1) / h;
+                        hps[i] *= maxInDownSample / h;
                     }
                 }
             }
@@ -290,9 +290,6 @@ namespace SpectrumAnalyzer {
                 float tolerance = Math.Max((float)Math.Log(fundI) * 4f, harmonicI / 100f);
                 int lowIndex = Math.Max(0, (int)Math.Floor(harmonicI - tolerance));
                 int highIndex = Math.Min(spectrum.Length - 1, (int)Math.Ceiling(harmonicI + tolerance));
-                // Find the indexes of the lower and upper bounds of the harmonic and then sum up the components
-                //return Enumerable.Range(lowIndex, highIndex - lowIndex)
-                //       .Select(i => spectrum[i]).Sum();
                 // Find the maximum value in the range
                 float maxValue = 0;
                 for (int i = lowIndex; i <= highIndex; i++) {
@@ -300,16 +297,8 @@ namespace SpectrumAnalyzer {
                         maxValue = spectrum[i];
                     }
                 }
-
-                // The android microphone is way more sensitive to lower frequencies, which causes the fundamental
-                // To often be over competitive in the harmonic series. So we discount it here heavily for lower frequencies
-                if (fundamentalFreq < 250 && n == 1) {
-                    //maxValue /= 20f;
-                }
-
+                
                 return maxValue;
-                //return Enumerable.Range(lowIndex, highIndex - lowIndex)
-                //       .Select(i => spectrum[i]).Max();
             }).ToArray();
         }
 
@@ -344,26 +333,6 @@ namespace SpectrumAnalyzer {
                 float weightedPeakFreq = (peakIndex + 1) * fundamentalFrequency * harmonicValues[peakIndex];
                 float sumFormantValue =  harmonicValues[peakIndex];
                 float maxFormantValue = harmonicValues[peakIndex];
-
-                // Check prior values and add them if close enough in value
-                /*for (int j = peakIndex - 1; j >= 0; j--) {
-                    if (Math.Abs(maxFormantValue - harmonicValues[j]) / maxFormantValue < sameFormantDifference) {
-                        weightedPeakFreq += (j + 1) * fundamentalFrequency * harmonicValues[j];
-                        sumFormantValue += harmonicValues[j];
-                    } else {
-                        break; // done with prior values, go no further
-                    }
-                }
-
-                // Check later values similarly
-                for (int j = peakIndex + 1; j < harmonicValues.Length; j++) {
-                    if (Math.Abs(maxFormantValue - harmonicValues[j]) / maxFormantValue < sameFormantDifference) {
-                        weightedPeakFreq += (j + 1) * fundamentalFrequency * harmonicValues[j];
-                        sumFormantValue += harmonicValues[j];
-                    } else {
-                        break;
-                    }
-                }*/
 
                 // Check a prior and a later value and add them if close enough in value
                 int priorI = peakIndex - 1;
