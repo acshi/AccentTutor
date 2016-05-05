@@ -30,7 +30,6 @@ namespace CompareLanguageRecordings {
         }
 
         static float scoreOfLanguage(List<Formant[]> observations, Vowel[] language) {
-            int countInLanguage = 0;
             float score = 0;
             foreach (var observation in observations) {
                 score += Math.Max(0, language.Min(v => {
