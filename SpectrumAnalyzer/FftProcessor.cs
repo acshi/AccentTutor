@@ -39,6 +39,7 @@ namespace SpectrumAnalyzer {
 
         //float[] dataIn;
         //float[] dataOut;
+        float[] windowData;
         Complex[] dataIn;
         Complex[] complexDataOut;
         float[] dataOut;
@@ -56,6 +57,7 @@ namespace SpectrumAnalyzer {
 
             //create two managed arrays, possibly misalinged
             //dataIn = new float[n];
+            windowData = new float[n];
             dataIn = new Complex[n];
             complexDataOut = new Complex[n];
             dataOut = new float[n];
@@ -86,11 +88,13 @@ namespace SpectrumAnalyzer {
             }
 
             // Move the window to make room for new data
-            Array.Copy(dataIn, SAMPLES_IN_UPDATE, dataIn, 0, FFT_LENGTH - SAMPLES_IN_UPDATE);
+            Array.Copy(windowData, SAMPLES_IN_UPDATE, windowData, 0, FFT_LENGTH - SAMPLES_IN_UPDATE);
+            // Insert new data
+            Array.Copy(samples, 0, windowData, FFT_LENGTH - SAMPLES_IN_UPDATE, SAMPLES_IN_UPDATE);
 
             // Copy over data into our array... applying a hann window
-            for (int i = 0; i < SAMPLES_IN_UPDATE; i++) {
-                dataIn[i + FFT_LENGTH - SAMPLES_IN_UPDATE] = samples[i] * hannWindow(i, SAMPLES_IN_UPDATE);
+            for (int i = 0; i < FFT_LENGTH; i++) {
+                dataIn[i] = windowData[i] * hannWindow(i, FFT_LENGTH);
             }
 
             // Copy the data over to the FFT's area

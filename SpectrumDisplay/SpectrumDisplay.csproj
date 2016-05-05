@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{3973E3D4-BFC5-49C1-8597-999225EB56CC}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SpectrumDisplay</RootNamespace>
+    <AssemblyName>SpectrumDisplay</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="fftwlib">
+      <HintPath>..\fftwlib\fftwlib.dll</HintPath>
+    </Reference>
+    <Reference Include="MoreLinq, Version=1.4.18916.0, Culture=neutral, PublicKeyToken=384d532d7e88985d, processorArchitecture=MSIL">
+      <HintPath>..\packages\morelinq.1.4.0\lib\net35\MoreLinq.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NAudio, Version=1.7.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.1.7.3\lib\net35\NAudio.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SpectrumDisplayFrm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SpectrumDisplayFrm.Designer.cs">
+      <DependentUpon>SpectrumDisplayFrm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SpectrumDisplayCtrl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SpectrumDisplayCtrl.Designer.cs">
+      <DependentUpon>SpectrumDisplayCtrl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AudioIn.cs" />
+    <EmbeddedResource Include="SpectrumDisplayFrm.resx">
+      <DependentUpon>SpectrumDisplayFrm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <EmbeddedResource Include="SpectrumDisplayCtrl.resx">
+      <DependentUpon>SpectrumDisplayCtrl.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="libfftw3f-3.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SpectrumAnalyzer\SpectrumAnalyzer.csproj">
+      <Project>{38af1044-955c-4b52-84f9-fbde2c0d21c4}</Project>
+      <Name>SpectrumAnalyzer</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -157,7 +157,7 @@ namespace AndroidAccentTutor {
 
             // Consider it noise/silence if the stdDev is too low
             Console.WriteLine(stdDev);
-            if (processedAudioFfts < lastFfts.Length || stdDev > 5e6) {
+            if (true || processedAudioFfts < lastFfts.Length || stdDev > 5e6) {
                 processedAudioFfts++;
 
                 fft = newFft;

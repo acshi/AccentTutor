@@ -50,20 +50,6 @@ namespace SpectrumAnalyzer {
             }
         }
 
-        // Determines if a sequence of time domain samples constitutes a silent signal
-        public static bool IsSilence(float[] values, float[] spectrum) {
-            float sumSquares = 0;
-            float absSum = 0;
-            for (int i = 0; i < values.Length; i++) {
-                sumSquares += values[i] * values[i];
-                absSum += Math.Abs(values[i]);
-            }
-            float rms = (float)Math.Sqrt(sumSquares / values.Length);
-            float absMean = absSum / values.Length;
-            Debug.WriteLine(rms / absMean);
-            return rms < 2000;
-        }
-
         // start index, end index, total power peaks from the vowel features
         public static Peak[] GetTopPeaks(float[] values, int maxPeaks) {
             int MAX_ITERATIONS = 20;

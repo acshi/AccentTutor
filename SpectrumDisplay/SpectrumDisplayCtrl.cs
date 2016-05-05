@@ -48,9 +48,7 @@ namespace SpectrumDisplay {
         //List<int> peakIndices;
         VowelMatching[] vowelMatchings;
         //Tuple<string, Tuple<int, int>[], float> bestVowelMatching;
-
-        float[] lastObservedFundamentals = new float[8];
-        float[] lastChosenFundamentals = new float[2];
+        
         float fundamentalFrequency = -1;
 
         public SpectrumDisplayCtrl() {
@@ -151,7 +149,7 @@ namespace SpectrumDisplay {
                     fftProcessor.ProcessSamples(buffer);
 
                     // Give it time to animate a little
-                    Thread.Sleep(1000 * FftProcessor.SAMPLES_IN_UPDATE / AudioIn.SAMPLE_RATE);
+                    Thread.Sleep(2000 * FftProcessor.SAMPLES_IN_UPDATE / AudioIn.SAMPLE_RATE);
                     iteration++;
                 }
                 reader.Close();
