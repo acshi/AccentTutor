@@ -16,6 +16,10 @@ using static SpectrumAnalyzer.Analyzer;
 using SpectrumAnalyzer;
 using System.Threading.Tasks;
 using Android.Util;
+using Android;
+using Android.Support.V4.Content;
+using Android.Content.PM;
+using Android.Support.V4.App;
 
 namespace AndroidAccentTutor {
     public class TutorDisplay : View {
@@ -80,7 +84,17 @@ namespace AndroidAccentTutor {
 
                 audioIn.AudioAvailable += HandleAudioData;
                 fftProcessor.FftDataAvilable += HandleFftData;
+
+                TryToGetAudioPermission();
+            }
+        }
+
+        public void TryToGetAudioPermission() {
+            const string permission = Manifest.Permission.RecordAudio;
+            if (ContextCompat.CheckSelfPermission(Context, permission) == (int)Permission.Granted) {
                 audioIn.Start();
+            } else {
+                ActivityCompat.RequestPermissions((MainActivity)Context, new string[] { Manifest.Permission.RecordAudio }, 0);
             }
         }
 
